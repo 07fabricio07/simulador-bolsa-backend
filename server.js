@@ -1,8 +1,10 @@
 require('dotenv').config();
 const express = require('express');
 const mongoose = require('mongoose');
+const cors = require('cors');
 
 const app = express();
+app.use(cors());
 app.use(express.json());
 
 // Conexión a MongoDB Atlas
@@ -17,10 +19,11 @@ mongoose.connect(MONGODB_URI, {
 .catch(err => console.error('Error de conexión a MongoDB Atlas:', err));
 
 // Rutas
+const authRouter = require('./routes/auth');
+app.use('/api/auth', authRouter);
+
 const parametrosSimulacionRouter = require('./routes/parametrosSimulacion');
 app.use('/api/parametros-simulacion', parametrosSimulacionRouter);
-
-// Aquí puedes agregar otras rutas como autenticación, acciones, etc.
 
 // Endpoint raíz
 app.get('/', (req, res) => {
