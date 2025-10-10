@@ -1,6 +1,11 @@
 const express = require('express');
 const router = express.Router();
+const multer = require('multer');
+const csv = require('csvtojson');
 const PortafolioInicial = require('../models/PortafolioInicial');
+
+// Multer para recibir archivos en memoria
+const upload = multer({ storage: multer.memoryStorage() });
 
 // GET /api/portafolio-inicial - Obtiene el contenido actual de la colección
 router.get('/', async (req, res) => {
@@ -25,6 +30,30 @@ router.put('/', async (req, res) => {
     res.json({ ok: true });
   } catch (err) {
     res.status(500).json({ error: "Error al actualizar el portafolio inicial" });
+  }
+});
+
+// POST /api/portafolio-inicial/csv - Subir y procesar CSV
+router.post('/csv', upload.single('archivo'), async (req, res) => {
+  try {
+    if (!req.file) {
+      return res.status(400).json({ error: 'No se recibió archivo' });
+    }
+    const csvString = req.file.buffer.toString('utf8');
+    const filas = await csv().fromString(csvString);
+
+    // Los encabezados son las claves del primer objeto
+    const encabezados = filas.length > 0 ? Object.keys(filas[0]) : [];
+
+    // Borra la colección y guarda el nuevo documento
+    await PortafolioInicial.deleteMany({});
+    const nuevo = new PortafolioInicial({ encabezados, filas });
+    await nuevo.save();
+
+    res.json({ ok: true, encabezados, filas });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: 'Error al procesar el archivo CSV' });
   }
 });
 
