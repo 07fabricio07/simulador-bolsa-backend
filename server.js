@@ -38,6 +38,10 @@ app.use('/api/portafolio-inicial', portafolioInicialRouter);
 // Nueva ruta para subir archivo Excel y cargar colección PortafolioInicial
 const subirExcelPortafolioInicialRouter = require('./routes/subirExcelPortafolioInicial');
 app.use('/api/subir-excel-portafolio-inicial', subirExcelPortafolioInicialRouter);
+
+// ----------- NUEVA RUTA TABLA MOMENTOS ---------------
+const tablaMomentosRouter = require('./routes/tablaMomentos');
+app.use('/api/tabla-momentos', tablaMomentosRouter);
 // ------------------------------------------------------
 
 // Endpoint raíz
