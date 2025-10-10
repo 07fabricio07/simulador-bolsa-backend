@@ -2,6 +2,8 @@ require('dotenv').config();
 const express = require('express');
 const mongoose = require('mongoose');
 const cors = require('cors');
+const http = require('http'); // <-- Nuevo: Necesario para socket.io
+const socketIo = require('socket.io'); // <-- Nuevo: Socket.io
 
 const app = express();
 app.use(cors());
@@ -53,8 +55,33 @@ app.get('/', (req, res) => {
   res.send('Backend para simulador de bolsa');
 });
 
+// --- SOCKET.IO ---
+const server = http.createServer(app);
+const io = socketIo(server, {
+  cors: { origin: "*" }
+});
+
+const PortafolioJugadores = require('./models/PortafolioJugadores');
+
+// Cuando un cliente se conecta, envía el portafolio actual
+io.on('connection', (socket) => {
+  console.log('Cliente conectado (WebSocket)');
+  PortafolioJugadores.findOne({}).then(data => {
+    socket.emit('portafolio_update', data);
+  });
+});
+
+// Función para emitir actualizaciones del portafolio a todos los clientes
+async function emitirActualizacionPortafolio() {
+  const datos = await PortafolioJugadores.findOne({});
+  io.emit('portafolio_update', datos);
+}
+
+// Exporta la función para usarla en otros archivos/rutas
+module.exports.emitirActualizacionPortafolio = emitirActualizacionPortafolio;
+
 // Inicialización del servidor
 const PORT = process.env.PORT || 10000;
-app.listen(PORT, () => {
+server.listen(PORT, () => {
   console.log(`Servidor escuchando en puerto ${PORT}`);
 });
