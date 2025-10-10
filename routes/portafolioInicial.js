@@ -1,9 +1,37 @@
-// POST /init - Inicializa la colección PortafolioInicial con los datos personalizados
+const express = require('express');
+const router = express.Router();
+const PortafolioInicial = require('../models/PortafolioInicial');
+
+// GET /api/portafolio-inicial - Obtiene el contenido actual de la colección
+router.get('/', async (req, res) => {
+  try {
+    const portafolio = await PortafolioInicial.findOne({});
+    res.json(portafolio || { encabezados: [], filas: [] });
+  } catch (err) {
+    res.status(500).json({ error: 'Error al obtener el portafolio inicial.' });
+  }
+});
+
+// PUT /api/portafolio-inicial - Actualiza toda la colección PortafolioInicial
+router.put('/', async (req, res) => {
+  try {
+    const { encabezados, filas } = req.body;
+    if (!Array.isArray(encabezados) || !Array.isArray(filas)) {
+      return res.status(400).json({ error: "Formato inválido" });
+    }
+    await PortafolioInicial.deleteMany({});
+    const nuevo = new PortafolioInicial({ encabezados, filas });
+    await nuevo.save();
+    res.json({ ok: true });
+  } catch (err) {
+    res.status(500).json({ error: "Error al actualizar el portafolio inicial" });
+  }
+});
+
+// POST /api/portafolio-inicial/init - Inicializa la colección con datos predeterminados
 router.post('/init', async (req, res) => {
   try {
     await PortafolioInicial.deleteMany({});
-
-    // Encabezados como en tu imagen
     const encabezados = [
       "jugador",
       "INTC",
@@ -16,7 +44,6 @@ router.post('/init', async (req, res) => {
       "KO"
     ];
 
-    // Filas de ejemplo (los datos de tu imagen)
     const filas = [
       { jugador: "Jugador 1", INTC: 10, MSFT: 15, AAPL: 20, IPET: 25, IBM: 30, WMT: 35, MRK: 40, KO: 45 },
       { jugador: "Jugador 2", INTC: 20, MSFT: 25, AAPL: 30, IPET: 35, IBM: 40, WMT: 45, MRK: 50, KO: 55 },
@@ -34,9 +61,10 @@ router.post('/init', async (req, res) => {
 
     const nuevo = new PortafolioInicial({ encabezados, filas });
     await nuevo.save();
-
     res.json({ ok: true });
   } catch (err) {
     res.status(500).json({ error: "Error al inicializar el portafolio inicial." });
   }
 });
+
+module.exports = router;
