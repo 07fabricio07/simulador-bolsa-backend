@@ -1,6 +1,7 @@
 const express = require('express');
 const router = express.Router();
 const PortafolioJugadores = require('../models/PortafolioJugadores');
+const { emitirPortafolioJugadores } = require('../server');
 
 // GET - devuelve la tabla
 router.get('/', async (req, res) => {
@@ -34,11 +35,15 @@ router.post('/init', async (req, res) => {
     }));
     const tabla = new PortafolioJugadores({ encabezados, filas });
     await tabla.save();
+    await emitirPortafolioJugadores(); // <--- EMITE EL CAMBIO
+
     res.json(tabla);
   } catch (err) {
     res.status(500).json({ error: 'Error al inicializar el portafolio de jugadores.' });
   }
 });
+
+// Si agregas más endpoints que modifiquen la colección, usa await emitirPortafolioJugadores() después de cada modificación
 
 module.exports = router;
 
