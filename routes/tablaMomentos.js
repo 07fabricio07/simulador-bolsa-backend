@@ -2,6 +2,8 @@ const express = require('express');
 const router = express.Router();
 const TablaMomentos = require('../models/TablaMomentos');
 
+let intervaloSimulacion = null;
+
 // GET - Devuelve la tabla de momentos
 router.get('/', async (req, res) => {
   try {
@@ -36,7 +38,7 @@ router.post('/init', async (req, res) => {
   }
 });
 
-// PUT /modificar - Modifica los datos de la segunda fila
+// PUT /modificar - Modifica los datos de la segunda fila y pausa simulación
 router.put('/modificar', async (req, res) => {
   try {
     const { Momento, DuracionDelMomento } = req.body;
@@ -50,7 +52,16 @@ router.put('/modificar', async (req, res) => {
       }
       tabla.filas[1].Momento = momentoNum;
       tabla.filas[1].DuracionDelMomento = duracionNum;
+      tabla.filas[1].Proceso = "en espera"; // Cambia a "en espera" al modificar
+
       await tabla.save();
+
+      // Si la simulación está activa, se interrumpe
+      if (intervaloSimulacion) {
+        clearInterval(intervaloSimulacion);
+        intervaloSimulacion = null;
+      }
+
       return res.json(tabla);
     }
     res.status(404).json({ error: 'No existe la tabla de momentos.' });
@@ -58,8 +69,6 @@ router.put('/modificar', async (req, res) => {
     res.status(500).json({ error: 'Error al modificar la tabla de momentos.' });
   }
 });
-
-let intervaloSimulacion = null;
 
 // POST /iniciar - Inicia la simulación
 router.post('/iniciar', async (req, res) => {
