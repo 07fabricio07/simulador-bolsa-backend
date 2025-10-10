@@ -42,6 +42,10 @@ app.use('/api/subir-excel-portafolio-inicial', subirExcelPortafolioInicialRouter
 // ----------- NUEVA RUTA TABLA MOMENTOS ---------------
 const tablaMomentosRouter = require('./routes/tablaMomentos');
 app.use('/api/tabla-momentos', tablaMomentosRouter);
+
+// ----------- NUEVA RUTA PRECIOS HISTORICOS ---------------
+const preciosHistoricosRouter = require('./routes/preciosHistoricos');
+app.use('/api/precios-historicos', preciosHistoricosRouter);
 // ------------------------------------------------------
 
 // Endpoint raíz
