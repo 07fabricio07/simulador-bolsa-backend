@@ -28,6 +28,7 @@ const PreciosHistoricos = require('./models/PreciosHistoricos');
 const ParametrosSimulacion = require('./models/ParametrosSimulacion');
 const AccionesParaDesplegable = require('./models/AccionesParaDesplegable');
 const PreciosFiltrados = require('./models/PreciosFiltrados');
+const IntencionesDeVenta = require('./models/IntencionesDeVenta'); // NUEVO MODELO
 
 // --- SOCKET.IO ---
 const server = http.createServer(app);
@@ -43,6 +44,7 @@ io.on('connection', async (socket) => {
   socket.emit('parametros_simulacion', await ParametrosSimulacion.findOne({}));
   socket.emit('acciones_para_desplegable', await AccionesParaDesplegable.findOne({}));
   socket.emit('precios_filtrados', await PreciosFiltrados.findOne({}));
+  socket.emit('intenciones_de_venta', await IntencionesDeVenta.find({}).sort({ id: 1 })); // NUEVO SOCKET
 });
 
 // Emitir colección genérica
@@ -58,6 +60,7 @@ module.exports.emitirPreciosHistoricos = async () => emitirColeccion('precios_hi
 module.exports.emitirParametrosSimulacion = async () => emitirColeccion('parametros_simulacion', await ParametrosSimulacion.findOne({}));
 module.exports.emitirAccionesParaDesplegable = async () => emitirColeccion('acciones_para_desplegable', await AccionesParaDesplegable.findOne({}));
 module.exports.emitirPreciosFiltrados = async () => emitirColeccion('precios_filtrados', await PreciosFiltrados.findOne({}));
+module.exports.emitirIntencionesDeVenta = async () => emitirColeccion('intenciones_de_venta', await IntencionesDeVenta.find({}).sort({ id: 1 })); // NUEVO EMISOR
 
 // ----- LÓGICA DE FILTRADO Y ACTUALIZACIÓN -----
 async function actualizarPreciosFiltradosDesdeMomentos() {
@@ -127,6 +130,9 @@ app.use('/api/parametros-simulacion', parametrosSimulacionRouter);
 
 const preciosFiltradosRouter = require('./routes/preciosFiltrados');
 app.use('/api/precios-filtrados', preciosFiltradosRouter);
+
+const intencionesDeVentaRouter = require('./routes/intencionesDeVenta'); // NUEVA RUTA
+app.use('/api/intenciones-de-venta', intencionesDeVentaRouter);
 
 app.get('/', (req, res) => {
   res.send('Backend para simulador de bolsa');
