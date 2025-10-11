@@ -1,7 +1,7 @@
 const express = require('express');
 const router = express.Router();
 const TablaMomentos = require('../models/TablaMomentos');
-const { emitirTablaMomentos } = require('../server');
+const { emitirTablaMomentos, actualizarPreciosFiltradosDesdeMomentos } = require('../server'); // <-- Importa la función
 
 let intervaloSimulacion = null;
 
@@ -34,6 +34,7 @@ router.post('/init', async (req, res) => {
     const tabla = new TablaMomentos({ filas });
     await tabla.save();
     await emitirTablaMomentos(); // Emitir evento WebSocket
+    await actualizarPreciosFiltradosDesdeMomentos(); // <-- Actualiza precios filtrados
     res.json(tabla);
   } catch (err) {
     res.status(500).json({ error: 'Error al inicializar la tabla de momentos.' });
@@ -54,10 +55,11 @@ router.put('/modificar', async (req, res) => {
       }
       tabla.filas[1].Momento = momentoNum;
       tabla.filas[1].DuracionDelMomento = duracionNum;
-      tabla.filas[1].Proceso = "en espera"; // Cambia a "en espera" al modificar
+      tabla.filas[1].Proceso = "en espera";
 
       await tabla.save();
       await emitirTablaMomentos(); // Emitir evento WebSocket
+      await actualizarPreciosFiltradosDesdeMomentos(); // <-- Actualiza precios filtrados
 
       // Si la simulación está activa, se interrumpe
       if (intervaloSimulacion) {
@@ -95,6 +97,7 @@ router.post('/iniciar', async (req, res) => {
         t.filas[1].Proceso = "jugando";
         await t.save();
         await emitirTablaMomentos(); // Emitir evento WebSocket en cada iteración
+        await actualizarPreciosFiltradosDesdeMomentos(); // <-- Actualiza precios filtrados en cada iteración
       }
     }, duracion * 1000);
 
@@ -116,6 +119,7 @@ router.post('/pausar', async (req, res) => {
       tabla.filas[1].Proceso = "en espera";
       await tabla.save();
       await emitirTablaMomentos(); // Emitir evento WebSocket
+      await actualizarPreciosFiltradosDesdeMomentos(); // <-- Actualiza precios filtrados
       return res.json(tabla);
     }
     res.status(404).json({ error: 'No existe la tabla de momentos.' });
