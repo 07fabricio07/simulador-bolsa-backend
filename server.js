@@ -28,8 +28,9 @@ const PreciosHistoricos = require('./models/PreciosHistoricos');
 const ParametrosSimulacion = require('./models/ParametrosSimulacion');
 const AccionesParaDesplegable = require('./models/AccionesParaDesplegable');
 const PreciosFiltrados = require('./models/PreciosFiltrados');
-const IntencionesDeVenta = require('./models/IntencionesDeVenta'); // NUEVO MODELO
-const Historial = require('./models/Historial'); // <<< NUEVO MODELO
+const IntencionesDeVenta = require('./models/IntencionesDeVenta');
+const Historial = require('./models/Historial');
+const HistorialLimpio = require('./models/HistorialLimpio'); // <<< NUEVO MODELO
 
 // --- SOCKET.IO ---
 const server = http.createServer(app);
@@ -45,8 +46,9 @@ io.on('connection', async (socket) => {
   socket.emit('parametros_simulacion', await ParametrosSimulacion.findOne({}));
   socket.emit('acciones_para_desplegable', await AccionesParaDesplegable.findOne({}));
   socket.emit('precios_filtrados', await PreciosFiltrados.findOne({}));
-  socket.emit('intenciones_de_venta', await IntencionesDeVenta.find({}).sort({ id: 1 })); // NUEVO SOCKET
-  socket.emit('historial', await Historial.find({}).sort({ hora: -1 })); // <<< NUEVO SOCKET
+  socket.emit('intenciones_de_venta', await IntencionesDeVenta.find({}).sort({ id: 1 }));
+  socket.emit('historial', await Historial.find({}).sort({ hora: -1 }));
+  socket.emit('historial_limpio', await HistorialLimpio.find({}).sort({ hora: -1 })); // <<< NUEVO SOCKET
 });
 
 // Emitir colección genérica
@@ -62,44 +64,35 @@ module.exports.emitirPreciosHistoricos = async () => emitirColeccion('precios_hi
 module.exports.emitirParametrosSimulacion = async () => emitirColeccion('parametros_simulacion', await ParametrosSimulacion.findOne({}));
 module.exports.emitirAccionesParaDesplegable = async () => emitirColeccion('acciones_para_desplegable', await AccionesParaDesplegable.findOne({}));
 module.exports.emitirPreciosFiltrados = async () => emitirColeccion('precios_filtrados', await PreciosFiltrados.findOne({}));
-module.exports.emitirIntencionesDeVenta = async () => emitirColeccion('intenciones_de_venta', await IntencionesDeVenta.find({}).sort({ id: 1 })); // NUEVO EMISOR
-module.exports.emitirHistorial = async () => emitirColeccion('historial', await Historial.find({}).sort({ hora: -1 })); // <<< NUEVO EMISOR
+module.exports.emitirIntencionesDeVenta = async () => emitirColeccion('intenciones_de_venta', await IntencionesDeVenta.find({}).sort({ id: 1 }));
+module.exports.emitirHistorial = async () => emitirColeccion('historial', await Historial.find({}).sort({ hora: -1 }));
+module.exports.emitirHistorialLimpio = async () => emitirColeccion('historial_limpio', await HistorialLimpio.find({}).sort({ hora: -1 })); // <<< NUEVO EMISOR
 
 // ----- LÓGICA DE FILTRADO Y ACTUALIZACIÓN -----
 async function actualizarPreciosFiltradosDesdeMomentos() {
-  // Busca TablaMomentos y PreciosHistoricos
   const tabla = await TablaMomentos.findOne({});
   const precios = await PreciosHistoricos.findOne({});
   if (!tabla || !tabla.filas || tabla.filas.length < 2 || !precios || !precios.encabezados || !precios.filas) {
     console.log('No hay datos suficientes para filtrar precios.');
     return;
   }
-
-  // Obtiene el momento actual directamente
   let momentoActual = tabla.filas[1].Momento;
   momentoActual = Number(momentoActual);
-
   if (isNaN(momentoActual)) {
     console.log('Momento actual no es un número válido:', tabla.filas[1].Momento);
     return;
   }
-
-  // Número de filas a filtrar
   const totalFilas = 230 + momentoActual;
   const filasFiltradas = precios.filas.slice(0, totalFilas);
-
-  // Actualiza la colección PreciosFiltrados
   await PreciosFiltrados.deleteMany({});
   await PreciosFiltrados.create({
     encabezados: precios.encabezados,
     filas: filasFiltradas
   });
-
   io.emit('precios_filtrados', {
     encabezados: precios.encabezados,
     filas: filasFiltradas
   });
-
   console.log(`PreciosFiltrados actualizado: encabezados=${precios.encabezados.length}, filas=${filasFiltradas.length}`);
 }
 module.exports.actualizarPreciosFiltradosDesdeMomentos = actualizarPreciosFiltradosDesdeMomentos;
@@ -134,11 +127,14 @@ app.use('/api/parametros-simulacion', parametrosSimulacionRouter);
 const preciosFiltradosRouter = require('./routes/preciosFiltrados');
 app.use('/api/precios-filtrados', preciosFiltradosRouter);
 
-const intencionesDeVentaRouter = require('./routes/intencionesDeVenta'); // NUEVA RUTA
+const intencionesDeVentaRouter = require('./routes/intencionesDeVenta');
 app.use('/api/intenciones-de-venta', intencionesDeVentaRouter);
 
-const historialRouter = require('./routes/historial'); // <<< NUEVA RUTA
+const historialRouter = require('./routes/historial');
 app.use('/api/historial', historialRouter);
+
+const historialLimpioRouter = require('./routes/historialLimpio'); // <<< NUEVA RUTA
+app.use('/api/historial-limpio', historialLimpioRouter);
 
 app.get('/', (req, res) => {
   res.send('Backend para simulador de bolsa');
