@@ -19,7 +19,7 @@ mongoose.connect(MONGODB_URI, {
 .then(() => console.log('Conectado a MongoDB Atlas'))
 .catch(err => console.error('Error de conexión a MongoDB Atlas:', err));
 
-// Importa solo los modelos que existen actualmente en tu repo
+// Modelos
 const User = require('./models/User');
 const PortafolioJugadores = require('./models/PortafolioJugadores');
 const PortafolioInicial = require('./models/PortafolioInicial');
@@ -27,12 +27,13 @@ const TablaMomentos = require('./models/TablaMomentos');
 const PreciosHistoricos = require('./models/PreciosHistoricos');
 const ParametrosSimulacion = require('./models/ParametrosSimulacion');
 const AccionesParaDesplegable = require('./models/AccionesParaDesplegable');
+const PreciosFiltrados = require('./models/PreciosFiltrados'); // <-- NUEVO MODELO
 
 // --- SOCKET.IO ---
 const server = http.createServer(app);
 const io = socketIo(server, { cors: { origin: "*" } });
 
-// Al conectar, envía estado inicial de todas las colecciones relevantes
+// Emitir colecciones relevantes
 io.on('connection', async (socket) => {
   console.log('Cliente conectado (WebSocket)');
   socket.emit('portafolio_jugadores', await PortafolioJugadores.findOne({}));
@@ -41,20 +42,52 @@ io.on('connection', async (socket) => {
   socket.emit('precios_historicos', await PreciosHistoricos.findOne({}));
   socket.emit('parametros_simulacion', await ParametrosSimulacion.findOne({}));
   socket.emit('acciones_para_desplegable', await AccionesParaDesplegable.findOne({}));
+  socket.emit('precios_filtrados', await PreciosFiltrados.findOne({})); // <-- EMITIR FILTRADOS
 });
 
-// Funciones para emitir eventos cuando cambian las colecciones
+// Emitir colección genérica
 async function emitirColeccion(nombreEvento, datos) {
   io.emit(nombreEvento, datos);
 }
 
-// Exporta funciones específicas para cada colección
+// Exportar funciones de emisión
 module.exports.emitirPortafolioJugadores = async () => emitirColeccion('portafolio_jugadores', await PortafolioJugadores.findOne({}));
 module.exports.emitirPortafolioInicial = async () => emitirColeccion('portafolio_inicial', await PortafolioInicial.findOne({}));
 module.exports.emitirTablaMomentos = async () => emitirColeccion('tabla_momentos', await TablaMomentos.findOne({}));
 module.exports.emitirPreciosHistoricos = async () => emitirColeccion('precios_historicos', await PreciosHistoricos.findOne({}));
 module.exports.emitirParametrosSimulacion = async () => emitirColeccion('parametros_simulacion', await ParametrosSimulacion.findOne({}));
 module.exports.emitirAccionesParaDesplegable = async () => emitirColeccion('acciones_para_desplegable', await AccionesParaDesplegable.findOne({}));
+module.exports.emitirPreciosFiltrados = async () => emitirColeccion('precios_filtrados', await PreciosFiltrados.findOne({})); // <-- NUEVO
+
+// ----- LÓGICA DE FILTRADO Y ACTUALIZACIÓN -----
+async function actualizarPreciosFiltrados(momentoActual) {
+  const precios = await PreciosHistoricos.findOne({});
+  if (!precios || !precios.encabezados || !precios.filas) return;
+
+  const nombreMomento = precios.encabezados[0];
+  const filasFiltradas = precios.filas.filter(fila =>
+    Number(fila[nombreMomento]) <= Number(momentoActual)
+  );
+
+  await PreciosFiltrados.deleteMany({});
+  await PreciosFiltrados.create({
+    encabezados: precios.encabezados,
+    filas: filasFiltradas
+  });
+
+  io.emit('precios_filtrados', {
+    encabezados: precios.encabezados,
+    filas: filasFiltradas
+  });
+}
+
+// Cada vez que cambie el momento actual en TablaMomentos, llama a actualizarPreciosFiltrados
+// Por ejemplo, puedes hacerlo desde la ruta tablaMomentos.js
+// Ejemplo de uso en una ruta:
+// const { actualizarPreciosFiltrados } = require('../server');
+// await actualizarPreciosFiltrados(nuevoMomento);
+
+module.exports.actualizarPreciosFiltrados = actualizarPreciosFiltrados;
 
 // ----- RUTAS -----
 const authRouter = require('./routes/auth');
@@ -80,6 +113,9 @@ app.use('/api/precios-historicos', preciosHistoricosRouter);
 
 const parametrosSimulacionRouter = require('./routes/parametrosSimulacion');
 app.use('/api/parametros-simulacion', parametrosSimulacionRouter);
+
+const preciosFiltradosRouter = require('./routes/preciosFiltrados'); // <-- NUEVA RUTA
+app.use('/api/precios-filtrados', preciosFiltradosRouter);
 
 app.get('/', (req, res) => {
   res.send('Backend para simulador de bolsa');
