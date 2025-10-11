@@ -58,4 +58,26 @@ router.post('/', async (req, res) => {
   }
 });
 
+// PUT - Actualiza la cantidad de una intención de venta a 0 (anular)
+router.put('/:id', async (req, res) => {
+  try {
+    const id = Number(req.params.id);
+    const { cantidad } = req.body;
+    if (typeof cantidad !== "number") {
+      return res.status(400).json({ error: "Cantidad debe ser un número" });
+    }
+    const result = await IntencionesDeVenta.findOneAndUpdate(
+      { id },
+      { cantidad },
+      { new: true }
+    );
+    if (!result) {
+      return res.status(404).json({ error: "Intención no encontrada." });
+    }
+    res.json({ ok: true, fila: result });
+  } catch (err) {
+    res.status(500).json({ error: "Error al actualizar intención." });
+  }
+});
+
 module.exports = router;
