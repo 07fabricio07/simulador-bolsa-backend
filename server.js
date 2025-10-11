@@ -25,7 +25,6 @@ const PortafolioJugadores = require('./models/PortafolioJugadores');
 const PortafolioInicial = require('./models/PortafolioInicial');
 const TablaMomentos = require('./models/TablaMomentos');
 const PreciosHistoricos = require('./models/PreciosHistoricos');
-const AccionJuego = require('./models/AccionJuego');
 const ParametrosSimulacion = require('./models/ParametrosSimulacion');
 const AccionesParaDesplegable = require('./models/AccionesParaDesplegable');
 
@@ -40,7 +39,6 @@ io.on('connection', async (socket) => {
   socket.emit('portafolio_inicial', await PortafolioInicial.findOne({}));
   socket.emit('tabla_momentos', await TablaMomentos.findOne({}));
   socket.emit('precios_historicos', await PreciosHistoricos.findOne({}));
-  socket.emit('acciones_juego', await AccionJuego.find());
   socket.emit('parametros_simulacion', await ParametrosSimulacion.findOne({}));
   socket.emit('acciones_para_desplegable', await AccionesParaDesplegable.findOne({}));
 });
@@ -55,7 +53,6 @@ module.exports.emitirPortafolioJugadores = async () => emitirColeccion('portafol
 module.exports.emitirPortafolioInicial = async () => emitirColeccion('portafolio_inicial', await PortafolioInicial.findOne({}));
 module.exports.emitirTablaMomentos = async () => emitirColeccion('tabla_momentos', await TablaMomentos.findOne({}));
 module.exports.emitirPreciosHistoricos = async () => emitirColeccion('precios_historicos', await PreciosHistoricos.findOne({}));
-module.exports.emitirAccionesJuego = async () => emitirColeccion('acciones_juego', await AccionJuego.find());
 module.exports.emitirParametrosSimulacion = async () => emitirColeccion('parametros_simulacion', await ParametrosSimulacion.findOne({}));
 module.exports.emitirAccionesParaDesplegable = async () => emitirColeccion('acciones_para_desplegable', await AccionesParaDesplegable.findOne({}));
 
@@ -80,9 +77,6 @@ app.use('/api/tabla-momentos', tablaMomentosRouter);
 
 const preciosHistoricosRouter = require('./routes/preciosHistoricos');
 app.use('/api/precios-historicos', preciosHistoricosRouter);
-
-const accionesJuegoRouter = require('./routes/accionesJuego');
-app.use('/api/acciones-juego', accionesJuegoRouter);
 
 const parametrosSimulacionRouter = require('./routes/parametrosSimulacion');
 app.use('/api/parametros-simulacion', parametrosSimulacionRouter);
