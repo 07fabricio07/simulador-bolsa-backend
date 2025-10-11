@@ -9,7 +9,8 @@ const HistorialSchema = new mongoose.Schema({
   comprador: { type: String, required: true },
   hora: { type: Date, required: true },
   momento: { type: Number, required: true },     // NUEVA COLUMNA
-  efectivo: { type: Number, required: true }     // NUEVA COLUMNA
+  efectivo: { type: Number, required: true },    // NUEVA COLUMNA
+  estado: { type: String, required: true }       // NUEVA COLUMNA
 });
 
 module.exports = mongoose.model('Historial', HistorialSchema);
