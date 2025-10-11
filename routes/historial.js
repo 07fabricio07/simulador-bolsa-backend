@@ -12,7 +12,7 @@ router.get('/', async (req, res) => {
 // POST - Inserta una nueva compra en el historial y emite por WebSocket
 router.post('/', async (req, res) => {
   try {
-    const { id, accion, cantidad, precio, vendedor, comprador, hora } = req.body;
+    const { id, accion, cantidad, precio, vendedor, comprador, hora, momento, efectivo } = req.body;
 
     // Validación básica
     if (
@@ -20,17 +20,19 @@ router.post('/', async (req, res) => {
       !accion || typeof accion !== "string" ||
       !Number.isInteger(cantidad) || cantidad <= 0 ||
       typeof precio !== "number" || precio <= 0 ||
-      !vendedor || !comprador || !hora
+      !vendedor || !comprador || !hora ||
+      typeof momento !== "number" ||
+      typeof efectivo !== "number"
     ) {
       return res.status(400).json({ error: "Datos inválidos para historial." });
     }
 
     const nuevaCompra = new Historial({
-      id, accion, cantidad, precio, vendedor, comprador, hora
+      id, accion, cantidad, precio, vendedor, comprador, hora, momento, efectivo
     });
 
     await nuevaCompra.save();
-    await emitirHistorial(); // Emite evento WebSocket con historial actualizado
+    await emitirHistorial();
 
     res.json({ ok: true, fila: nuevaCompra });
   } catch (err) {
