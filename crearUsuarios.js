@@ -15,7 +15,12 @@ const usuarios = [
   { usuario: "jugador10", nombre: "Jugador Diez", password: "pass10", rol: "jugador" },
   { usuario: "jugador11", nombre: "Jugador Once", password: "pass11", rol: "jugador" },
   { usuario: "jugador12", nombre: "Jugador Doce", password: "pass12", rol: "jugador" },
-  { usuario: "admin", nombre: "Administrador", password: "adminpass", rol: "admin" }
+  { usuario: "admin", nombre: "Administrador", password: "adminpass", rol: "admin" },
+
+  // NUEVOS REGISTRADORES
+  { usuario: "registrador1", nombre: "Registrador 1", password: "reg1pass", rol: "registrador" },
+  { usuario: "registrador2", nombre: "Registrador 2", password: "reg2pass", rol: "registrador" },
+  { usuario: "registrador3", nombre: "Registrador 3", password: "reg3pass", rol: "registrador" }
 ];
 
 async function crearUsuarios() {
