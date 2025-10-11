@@ -136,6 +136,9 @@ app.use('/api/historial', historialRouter);
 const historialLimpioRouter = require('./routes/historialLimpio'); // <<< NUEVA RUTA
 app.use('/api/historial-limpio', historialLimpioRouter);
 
+const adminLimpiezaRouter = require('./routes/adminLimpieza'); // <<< NUEVA RUTA DE LIMPIEZA ADMIN
+app.use('/api/admin-limpieza', adminLimpiezaRouter);
+
 app.get('/', (req, res) => {
   res.send('Backend para simulador de bolsa');
 });
