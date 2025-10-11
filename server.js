@@ -19,16 +19,15 @@ mongoose.connect(MONGODB_URI, {
 .then(() => console.log('Conectado a MongoDB Atlas'))
 .catch(err => console.error('Error de conexión a MongoDB Atlas:', err));
 
-// Importa modelos necesarios para emitir eventos
+// Importa solo los modelos que existen actualmente en tu repo
+const User = require('./models/User');
 const PortafolioJugadores = require('./models/PortafolioJugadores');
 const PortafolioInicial = require('./models/PortafolioInicial');
 const TablaMomentos = require('./models/TablaMomentos');
 const PreciosHistoricos = require('./models/PreciosHistoricos');
-const AccionesJuego = require('./models/AccionJuego');
-const ComprasEnProceso = require('./models/ComprasEnProceso');
-const IntencionesVenta = require('./models/IntencionVenta');
-const LimpiezaCompra = require('./models/LimpiezaCompra');
-const Transaccion = require('./models/Transaccion');
+const AccionJuego = require('./models/AccionJuego');
+const ParametrosSimulacion = require('./models/ParametrosSimulacion');
+const AccionesParaDesplegable = require('./models/AccionesParaDesplegable');
 
 // --- SOCKET.IO ---
 const server = http.createServer(app);
@@ -41,11 +40,9 @@ io.on('connection', async (socket) => {
   socket.emit('portafolio_inicial', await PortafolioInicial.findOne({}));
   socket.emit('tabla_momentos', await TablaMomentos.findOne({}));
   socket.emit('precios_historicos', await PreciosHistoricos.findOne({}));
-  socket.emit('acciones_juego', await AccionesJuego.find());
-  socket.emit('compras_en_proceso', await ComprasEnProceso.find());
-  socket.emit('intenciones_venta', await IntencionesVenta.find());
-  socket.emit('limpieza_compra', await LimpiezaCompra.find());
-  socket.emit('transacciones', await Transaccion.find());
+  socket.emit('acciones_juego', await AccionJuego.find());
+  socket.emit('parametros_simulacion', await ParametrosSimulacion.findOne({}));
+  socket.emit('acciones_para_desplegable', await AccionesParaDesplegable.findOne({}));
 });
 
 // Funciones para emitir eventos cuando cambian las colecciones
@@ -58,18 +55,13 @@ module.exports.emitirPortafolioJugadores = async () => emitirColeccion('portafol
 module.exports.emitirPortafolioInicial = async () => emitirColeccion('portafolio_inicial', await PortafolioInicial.findOne({}));
 module.exports.emitirTablaMomentos = async () => emitirColeccion('tabla_momentos', await TablaMomentos.findOne({}));
 module.exports.emitirPreciosHistoricos = async () => emitirColeccion('precios_historicos', await PreciosHistoricos.findOne({}));
-module.exports.emitirAccionesJuego = async () => emitirColeccion('acciones_juego', await AccionesJuego.find());
-module.exports.emitirComprasEnProceso = async () => emitirColeccion('compras_en_proceso', await ComprasEnProceso.find());
-module.exports.emitirIntencionesVenta = async () => emitirColeccion('intenciones_venta', await IntencionesVenta.find());
-module.exports.emitirLimpiezaCompra = async () => emitirColeccion('limpieza_compra', await LimpiezaCompra.find());
-module.exports.emitirTransacciones = async () => emitirColeccion('transacciones', await Transaccion.find());
+module.exports.emitirAccionesJuego = async () => emitirColeccion('acciones_juego', await AccionJuego.find());
+module.exports.emitirParametrosSimulacion = async () => emitirColeccion('parametros_simulacion', await ParametrosSimulacion.findOne({}));
+module.exports.emitirAccionesParaDesplegable = async () => emitirColeccion('acciones_para_desplegable', await AccionesParaDesplegable.findOne({}));
 
 // ----- RUTAS -----
 const authRouter = require('./routes/auth');
 app.use('/api/auth', authRouter);
-
-const parametrosSimulacionRouter = require('./routes/parametrosSimulacion');
-app.use('/api/parametros-simulacion', parametrosSimulacionRouter);
 
 const accionesParaDesplegableRouter = require('./routes/accionesParaDesplegable');
 app.use('/api/acciones-para-desplegable', accionesParaDesplegableRouter);
@@ -92,17 +84,8 @@ app.use('/api/precios-historicos', preciosHistoricosRouter);
 const accionesJuegoRouter = require('./routes/accionesJuego');
 app.use('/api/acciones-juego', accionesJuegoRouter);
 
-const comprasEnProcesoRouter = require('./routes/comprasEnProceso');
-app.use('/api/compras-en-proceso', comprasEnProcesoRouter);
-
-const intencionesVentaRouter = require('./routes/intencionesVenta');
-app.use('/api/intenciones-venta', intencionesVentaRouter);
-
-const limpiezaCompraRouter = require('./routes/limpiezaCompra');
-app.use('/api/limpieza-compra', limpiezaCompraRouter);
-
-const transaccionesRouter = require('./routes/transacciones');
-app.use('/api/transacciones', transaccionesRouter);
+const parametrosSimulacionRouter = require('./routes/parametrosSimulacion');
+app.use('/api/parametros-simulacion', parametrosSimulacionRouter);
 
 app.get('/', (req, res) => {
   res.send('Backend para simulador de bolsa');
