@@ -27,7 +27,7 @@ const TablaMomentos = require('./models/TablaMomentos');
 const PreciosHistoricos = require('./models/PreciosHistoricos');
 const ParametrosSimulacion = require('./models/ParametrosSimulacion');
 const AccionesParaDesplegable = require('./models/AccionesParaDesplegable');
-const PreciosFiltrados = require('./models/PreciosFiltrados'); // <-- NUEVO MODELO
+const PreciosFiltrados = require('./models/PreciosFiltrados');
 
 // --- SOCKET.IO ---
 const server = http.createServer(app);
@@ -42,7 +42,7 @@ io.on('connection', async (socket) => {
   socket.emit('precios_historicos', await PreciosHistoricos.findOne({}));
   socket.emit('parametros_simulacion', await ParametrosSimulacion.findOne({}));
   socket.emit('acciones_para_desplegable', await AccionesParaDesplegable.findOne({}));
-  socket.emit('precios_filtrados', await PreciosFiltrados.findOne({})); // <-- EMITIR FILTRADOS
+  socket.emit('precios_filtrados', await PreciosFiltrados.findOne({}));
 });
 
 // Emitir colección genérica
@@ -57,18 +57,27 @@ module.exports.emitirTablaMomentos = async () => emitirColeccion('tabla_momentos
 module.exports.emitirPreciosHistoricos = async () => emitirColeccion('precios_historicos', await PreciosHistoricos.findOne({}));
 module.exports.emitirParametrosSimulacion = async () => emitirColeccion('parametros_simulacion', await ParametrosSimulacion.findOne({}));
 module.exports.emitirAccionesParaDesplegable = async () => emitirColeccion('acciones_para_desplegable', await AccionesParaDesplegable.findOne({}));
-module.exports.emitirPreciosFiltrados = async () => emitirColeccion('precios_filtrados', await PreciosFiltrados.findOne({})); // <-- NUEVO
+module.exports.emitirPreciosFiltrados = async () => emitirColeccion('precios_filtrados', await PreciosFiltrados.findOne({}));
 
 // ----- LÓGICA DE FILTRADO Y ACTUALIZACIÓN -----
-async function actualizarPreciosFiltrados(momentoActual) {
+async function actualizarPreciosFiltradosDesdeMomentos() {
+  // Busca TablaMomentos y PreciosHistoricos
+  const tabla = await TablaMomentos.findOne({});
   const precios = await PreciosHistoricos.findOne({});
-  if (!precios || !precios.encabezados || !precios.filas) return;
+  if (!tabla || !tabla.filas || tabla.filas.length < 2 || !precios || !precios.encabezados || !precios.filas) return;
 
+  // Obtén el nombre de la columna del momento (primera columna de encabezados)
   const nombreMomento = precios.encabezados[0];
-  const filasFiltradas = precios.filas.filter(fila =>
-    Number(fila[nombreMomento]) <= Number(momentoActual)
-  );
 
+  // Obtiene el momento actual desde la primera columna, segunda fila de TablaMomentos
+  let momentoActual = tabla.filas[1][nombreMomento];
+  momentoActual = Number(momentoActual);
+
+  // Calcula el número de filas que debe tener la colección filtrada: 231 + momentoActual
+  const totalFilas = 231 + momentoActual;
+  const filasFiltradas = precios.filas.slice(0, totalFilas);
+
+  // Actualiza la colección PreciosFiltrados
   await PreciosFiltrados.deleteMany({});
   await PreciosFiltrados.create({
     encabezados: precios.encabezados,
@@ -80,14 +89,9 @@ async function actualizarPreciosFiltrados(momentoActual) {
     filas: filasFiltradas
   });
 }
+module.exports.actualizarPreciosFiltradosDesdeMomentos = actualizarPreciosFiltradosDesdeMomentos;
 
-// Cada vez que cambie el momento actual en TablaMomentos, llama a actualizarPreciosFiltrados
-// Por ejemplo, puedes hacerlo desde la ruta tablaMomentos.js
-// Ejemplo de uso en una ruta:
-// const { actualizarPreciosFiltrados } = require('../server');
-// await actualizarPreciosFiltrados(nuevoMomento);
-
-module.exports.actualizarPreciosFiltrados = actualizarPreciosFiltrados;
+// Debes llamar a actualizarPreciosFiltradosDesdeMomentos() cada vez que cambie el momento actual en el backend.
 
 // ----- RUTAS -----
 const authRouter = require('./routes/auth');
@@ -114,7 +118,7 @@ app.use('/api/precios-historicos', preciosHistoricosRouter);
 const parametrosSimulacionRouter = require('./routes/parametrosSimulacion');
 app.use('/api/parametros-simulacion', parametrosSimulacionRouter);
 
-const preciosFiltradosRouter = require('./routes/preciosFiltrados'); // <-- NUEVA RUTA
+const preciosFiltradosRouter = require('./routes/preciosFiltrados');
 app.use('/api/precios-filtrados', preciosFiltradosRouter);
 
 app.get('/', (req, res) => {
