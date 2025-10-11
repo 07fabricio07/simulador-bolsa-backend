@@ -64,16 +64,21 @@ async function actualizarPreciosFiltradosDesdeMomentos() {
   // Busca TablaMomentos y PreciosHistoricos
   const tabla = await TablaMomentos.findOne({});
   const precios = await PreciosHistoricos.findOne({});
-  if (!tabla || !tabla.filas || tabla.filas.length < 2 || !precios || !precios.encabezados || !precios.filas) return;
+  if (!tabla || !tabla.filas || tabla.filas.length < 2 || !precios || !precios.encabezados || !precios.filas) {
+    console.log('No hay datos suficientes para filtrar precios.');
+    return;
+  }
 
-  // Obtén el nombre de la columna del momento (primera columna de encabezados)
-  const nombreMomento = precios.encabezados[0];
-
-  // Obtiene el momento actual desde la primera columna, segunda fila de TablaMomentos
-  let momentoActual = tabla.filas[1][nombreMomento];
+  // Obtiene el momento actual directamente
+  let momentoActual = tabla.filas[1].Momento;
   momentoActual = Number(momentoActual);
 
-  // Calcula el número de filas que debe tener la colección filtrada: 231 + momentoActual
+  if (isNaN(momentoActual)) {
+    console.log('Momento actual no es un número válido:', tabla.filas[1].Momento);
+    return;
+  }
+
+  // Número de filas a filtrar
   const totalFilas = 231 + momentoActual;
   const filasFiltradas = precios.filas.slice(0, totalFilas);
 
@@ -88,6 +93,8 @@ async function actualizarPreciosFiltradosDesdeMomentos() {
     encabezados: precios.encabezados,
     filas: filasFiltradas
   });
+
+  console.log(`PreciosFiltrados actualizado: encabezados=${precios.encabezados.length}, filas=${filasFiltradas.length}`);
 }
 module.exports.actualizarPreciosFiltradosDesdeMomentos = actualizarPreciosFiltradosDesdeMomentos;
 
