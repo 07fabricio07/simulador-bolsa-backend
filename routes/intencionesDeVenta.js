@@ -12,14 +12,23 @@ router.get('/', async (req, res) => {
 // POST - Inserta una nueva intención de venta
 router.post('/', async (req, res) => {
   try {
-    const { accion, cantidad, precio, jugador } = req.body;
-    // Validaciones
+    // LOG para depuración
+    console.log("Datos recibidos en POST:", req.body);
+
+    // Convierte los datos a los tipos esperados
+    const accion = req.body.accion;
+    const cantidad = Number(req.body.cantidad);
+    const precio = Number(req.body.precio);
+    const jugador = req.body.jugador;
+
+    // Validaciones robustas
     if (
       !accion || !["INTC", "MSFT", "AAPL", "IPET", "IBM"].includes(accion) ||
       !Number.isInteger(cantidad) || cantidad <= 0 ||
-      typeof precio !== 'number' || precio <= 0 ||
+      isNaN(precio) || precio <= 0 ||
       !jugador || !/^Jugador \d+$/.test(jugador)
     ) {
+      console.log("Validación fallida:", { accion, cantidad, precio, jugador });
       return res.status(400).json({ error: 'Datos inválidos.' });
     }
 
@@ -41,6 +50,7 @@ router.post('/', async (req, res) => {
 
     res.json({ ok: true, fila: nuevaFila });
   } catch (err) {
+    console.error("Error al guardar intención de venta:", err);
     res.status(500).json({ error: 'Error al registrar intención de venta.' });
   }
 });
