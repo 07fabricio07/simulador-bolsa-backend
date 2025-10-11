@@ -5,7 +5,7 @@ const UserSchema = new mongoose.Schema({
   usuario: { type: String, required: true, unique: true },
   nombre: { type: String, required: true },
   password: { type: String, required: true },
-  rol: { type: String, enum: ['admin', 'jugador'], required: true }
+  rol: { type: String, enum: ['admin', 'jugador', 'registrador'], required: true } // <-- Se agregó "registrador"
 });
 
 // Encriptar contraseña antes de guardar
