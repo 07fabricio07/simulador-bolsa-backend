@@ -21,6 +21,9 @@ router.post('/', async (req, res) => {
     const precio = Number(req.body.precio);
     const jugador = req.body.jugador;
 
+    // LOG de los datos convertidos
+    console.log("Datos convertidos:", { accion, cantidad, precio, jugador });
+
     // Validaciones robustas
     if (
       !accion || !["INTC", "MSFT", "AAPL", "IPET", "IBM"].includes(accion) ||
