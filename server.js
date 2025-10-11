@@ -30,7 +30,8 @@ const AccionesParaDesplegable = require('./models/AccionesParaDesplegable');
 const PreciosFiltrados = require('./models/PreciosFiltrados');
 const IntencionesDeVenta = require('./models/IntencionesDeVenta');
 const Historial = require('./models/Historial');
-const HistorialLimpio = require('./models/HistorialLimpio'); // <<< NUEVO MODELO
+const HistorialLimpio = require('./models/HistorialLimpio');
+const RegistrosRegistrador = require('./models/RegistrosRegistrador'); // <<< NUEVO MODELO
 
 // --- SOCKET.IO ---
 const server = http.createServer(app);
@@ -48,7 +49,8 @@ io.on('connection', async (socket) => {
   socket.emit('precios_filtrados', await PreciosFiltrados.findOne({}));
   socket.emit('intenciones_de_venta', await IntencionesDeVenta.find({}).sort({ id: 1 }));
   socket.emit('historial', await Historial.find({}).sort({ hora: -1 }));
-  socket.emit('historial_limpio', await HistorialLimpio.find({}).sort({ hora: -1 })); // <<< NUEVO SOCKET
+  socket.emit('historial_limpio', await HistorialLimpio.find({}).sort({ hora: -1 }));
+  socket.emit('registros_registrador', await RegistrosRegistrador.find({}).sort({ hora: -1 })); // <<< NUEVO SOCKET
 });
 
 // Emitir colección genérica
@@ -66,7 +68,8 @@ module.exports.emitirAccionesParaDesplegable = async () => emitirColeccion('acci
 module.exports.emitirPreciosFiltrados = async () => emitirColeccion('precios_filtrados', await PreciosFiltrados.findOne({}));
 module.exports.emitirIntencionesDeVenta = async () => emitirColeccion('intenciones_de_venta', await IntencionesDeVenta.find({}).sort({ id: 1 }));
 module.exports.emitirHistorial = async () => emitirColeccion('historial', await Historial.find({}).sort({ hora: -1 }));
-module.exports.emitirHistorialLimpio = async () => emitirColeccion('historial_limpio', await HistorialLimpio.find({}).sort({ hora: -1 })); // <<< NUEVO EMISOR
+module.exports.emitirHistorialLimpio = async () => emitirColeccion('historial_limpio', await HistorialLimpio.find({}).sort({ hora: -1 }));
+module.exports.emitirRegistrosRegistrador = async () => emitirColeccion('registros_registrador', await RegistrosRegistrador.find({}).sort({ hora: -1 })); // <<< NUEVO EMISOR
 
 // ----- LÓGICA DE FILTRADO Y ACTUALIZACIÓN -----
 async function actualizarPreciosFiltradosDesdeMomentos() {
@@ -96,8 +99,6 @@ async function actualizarPreciosFiltradosDesdeMomentos() {
   console.log(`PreciosFiltrados actualizado: encabezados=${precios.encabezados.length}, filas=${filasFiltradas.length}`);
 }
 module.exports.actualizarPreciosFiltradosDesdeMomentos = actualizarPreciosFiltradosDesdeMomentos;
-
-// Debes llamar a actualizarPreciosFiltradosDesdeMomentos() cada vez que cambie el momento actual en el backend.
 
 // ----- RUTAS -----
 const authRouter = require('./routes/auth');
@@ -133,11 +134,14 @@ app.use('/api/intenciones-de-venta', intencionesDeVentaRouter);
 const historialRouter = require('./routes/historial');
 app.use('/api/historial', historialRouter);
 
-const historialLimpioRouter = require('./routes/historialLimpio'); // <<< NUEVA RUTA
+const historialLimpioRouter = require('./routes/historialLimpio');
 app.use('/api/historial-limpio', historialLimpioRouter);
 
-const adminLimpiezaRouter = require('./routes/adminLimpieza'); // <<< NUEVA RUTA DE LIMPIEZA ADMIN
+const adminLimpiezaRouter = require('./routes/adminLimpieza');
 app.use('/api/admin-limpieza', adminLimpiezaRouter);
+
+const registrosRegistradorRouter = require('./routes/registrosRegistrador'); // <<< NUEVA RUTA
+app.use('/api/registros-registrador', registrosRegistradorRouter);
 
 app.get('/', (req, res) => {
   res.send('Backend para simulador de bolsa');
