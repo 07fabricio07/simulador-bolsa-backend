@@ -25,7 +25,7 @@ const PortafolioInicial = require('./models/PortafolioInicial');
 const TablaMomentos = require('./models/TablaMomentos');
 const PreciosHistoricos = require('./models/PreciosHistoricos');
 const AccionesJuego = require('./models/AccionJuego');
-const ComprasEnProceso = require('./models/CompraEnProceso');
+const ComprasEnProceso = require('./models/ComprasEnProceso');
 const IntencionesVenta = require('./models/IntencionVenta');
 const LimpiezaCompra = require('./models/LimpiezaCompra');
 const Transaccion = require('./models/Transaccion');
@@ -64,7 +64,7 @@ module.exports.emitirIntencionesVenta = async () => emitirColeccion('intenciones
 module.exports.emitirLimpiezaCompra = async () => emitirColeccion('limpieza_compra', await LimpiezaCompra.find());
 module.exports.emitirTransacciones = async () => emitirColeccion('transacciones', await Transaccion.find());
 
-// Rutas (sin cambios, pero debes modificar cada ruta para emitir evento cuando cambie la colección)
+// ----- RUTAS -----
 const authRouter = require('./routes/auth');
 app.use('/api/auth', authRouter);
 

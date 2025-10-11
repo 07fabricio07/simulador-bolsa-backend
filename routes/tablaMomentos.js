@@ -1,6 +1,7 @@
 const express = require('express');
 const router = express.Router();
 const TablaMomentos = require('../models/TablaMomentos');
+const { emitirTablaMomentos } = require('../server');
 
 let intervaloSimulacion = null;
 
@@ -32,6 +33,7 @@ router.post('/init', async (req, res) => {
     ];
     const tabla = new TablaMomentos({ filas });
     await tabla.save();
+    await emitirTablaMomentos(); // Emitir evento WebSocket
     res.json(tabla);
   } catch (err) {
     res.status(500).json({ error: 'Error al inicializar la tabla de momentos.' });
@@ -55,6 +57,7 @@ router.put('/modificar', async (req, res) => {
       tabla.filas[1].Proceso = "en espera"; // Cambia a "en espera" al modificar
 
       await tabla.save();
+      await emitirTablaMomentos(); // Emitir evento WebSocket
 
       // Si la simulación está activa, se interrumpe
       if (intervaloSimulacion) {
@@ -83,6 +86,7 @@ router.post('/iniciar', async (req, res) => {
 
     tabla.filas[1].Proceso = "jugando";
     await tabla.save();
+    await emitirTablaMomentos(); // Emitir evento WebSocket
 
     intervaloSimulacion = setInterval(async () => {
       const t = await TablaMomentos.findOne({});
@@ -90,6 +94,7 @@ router.post('/iniciar', async (req, res) => {
         t.filas[1].Momento = Number(t.filas[1].Momento) + 1;
         t.filas[1].Proceso = "jugando";
         await t.save();
+        await emitirTablaMomentos(); // Emitir evento WebSocket en cada iteración
       }
     }, duracion * 1000);
 
@@ -110,6 +115,7 @@ router.post('/pausar', async (req, res) => {
     if (tabla && tabla.filas[1]) {
       tabla.filas[1].Proceso = "en espera";
       await tabla.save();
+      await emitirTablaMomentos(); // Emitir evento WebSocket
       return res.json(tabla);
     }
     res.status(404).json({ error: 'No existe la tabla de momentos.' });
