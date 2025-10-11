@@ -79,7 +79,7 @@ async function actualizarPreciosFiltradosDesdeMomentos() {
   }
 
   // Número de filas a filtrar
-  const totalFilas = 231 + momentoActual;
+  const totalFilas = 230 + momentoActual;
   const filasFiltradas = precios.filas.slice(0, totalFilas);
 
   // Actualiza la colección PreciosFiltrados
