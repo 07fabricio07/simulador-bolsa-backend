@@ -13,15 +13,16 @@ router.get('/', async (req, res) => {
   }
 });
 
-// POST /init - inicializa la tabla con los encabezados y filas vacías
+// POST /init - inicializa la tabla con los encabezados y 13 filas (incluye Jugador 13)
 router.post('/init', async (req, res) => {
   try {
     await PortafolioJugadores.deleteMany({});
     const encabezados = [
-      "jugador", "INTC", "MSFT", "AAPL", "IPET", "IBM", "WMT", "MRK", "KO", "Efectivo"
+      "jugador", "INTC", "MSFT", "AAPL", "IPET",
+      "IBM", "WMT", "MRK", "KO", "Efectivo"
       // "Préstamo" eliminado
     ];
-    const filas = Array.from({ length: 12 }).map((_, idx) => ({
+    const filas = Array.from({ length: 13 }).map((_, idx) => ({
       jugador: `Jugador ${idx + 1}`,
       INTC: null,
       MSFT: null,
