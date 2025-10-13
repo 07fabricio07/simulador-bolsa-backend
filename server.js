@@ -31,7 +31,8 @@ const PreciosFiltrados = require('./models/PreciosFiltrados');
 const IntencionesDeVenta = require('./models/IntencionesDeVenta');
 const Historial = require('./models/Historial');
 const HistorialLimpio = require('./models/HistorialLimpio');
-const RegistrosRegistrador = require('./models/RegistrosRegistrador'); // <<< NUEVO MODELO
+const RegistrosRegistrador = require('./models/RegistrosRegistrador');
+const ReguladorAcciones = require('./models/ReguladorAcciones'); // <<< NUEVO MODELO
 
 // --- SOCKET.IO ---
 const server = http.createServer(app);
@@ -50,7 +51,8 @@ io.on('connection', async (socket) => {
   socket.emit('intenciones_de_venta', await IntencionesDeVenta.find({}).sort({ id: 1 }));
   socket.emit('historial', await Historial.find({}).sort({ hora: -1 }));
   socket.emit('historial_limpio', await HistorialLimpio.find({}).sort({ hora: -1 }));
-  socket.emit('registros_registrador', await RegistrosRegistrador.find({}).sort({ hora: -1 })); // <<< NUEVO SOCKET
+  socket.emit('registros_registrador', await RegistrosRegistrador.find({}).sort({ hora: -1 }));
+  socket.emit('regulador_acciones', await ReguladorAcciones.findOne({})); // <<< NUEVO SOCKET
 });
 
 // Emitir colección genérica
@@ -69,7 +71,8 @@ module.exports.emitirPreciosFiltrados = async () => emitirColeccion('precios_fil
 module.exports.emitirIntencionesDeVenta = async () => emitirColeccion('intenciones_de_venta', await IntencionesDeVenta.find({}).sort({ id: 1 }));
 module.exports.emitirHistorial = async () => emitirColeccion('historial', await Historial.find({}).sort({ hora: -1 }));
 module.exports.emitirHistorialLimpio = async () => emitirColeccion('historial_limpio', await HistorialLimpio.find({}).sort({ hora: -1 }));
-module.exports.emitirRegistrosRegistrador = async () => emitirColeccion('registros_registrador', await RegistrosRegistrador.find({}).sort({ hora: -1 })); // <<< NUEVO EMISOR
+module.exports.emitirRegistrosRegistrador = async () => emitirColeccion('registros_registrador', await RegistrosRegistrador.find({}).sort({ hora: -1 }));
+module.exports.emitirReguladorAcciones = async () => emitirColeccion('regulador_acciones', await ReguladorAcciones.findOne({})); // <<< NUEVO EMISOR
 
 // ----- LÓGICA DE FILTRADO Y ACTUALIZACIÓN -----
 async function actualizarPreciosFiltradosDesdeMomentos() {
@@ -140,8 +143,11 @@ app.use('/api/historial-limpio', historialLimpioRouter);
 const adminLimpiezaRouter = require('./routes/adminLimpieza');
 app.use('/api/admin-limpieza', adminLimpiezaRouter);
 
-const registrosRegistradorRouter = require('./routes/registrosRegistrador'); // <<< NUEVA RUTA
+const registrosRegistradorRouter = require('./routes/registrosRegistrador');
 app.use('/api/registros-registrador', registrosRegistradorRouter);
+
+const reguladorAccionesRouter = require('./routes/reguladorAcciones'); // <<< NUEVA RUTA
+app.use('/api/regulador-acciones', reguladorAccionesRouter);
 
 app.get('/', (req, res) => {
   res.send('Backend para simulador de bolsa');
