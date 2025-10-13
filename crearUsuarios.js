@@ -15,6 +15,7 @@ const usuarios = [
   { usuario: "jugador10", nombre: "Jugador Diez", password: "pass10", rol: "jugador" },
   { usuario: "jugador11", nombre: "Jugador Once", password: "pass11", rol: "jugador" },
   { usuario: "jugador12", nombre: "Jugador Doce", password: "pass12", rol: "jugador" },
+  { usuario: "jugador13", nombre: "Jugador Trece", password: "pass13", rol: "jugador" },
   { usuario: "admin", nombre: "Administrador", password: "adminpass", rol: "admin" },
 
   // NUEVOS REGISTRADORES
