@@ -18,7 +18,8 @@ router.post('/init', async (req, res) => {
   try {
     await PortafolioJugadores.deleteMany({});
     const encabezados = [
-      "Jugadores", "INTC", "MSFT", "AAPL", "IPET", "IBM", "WMT", "MRK", "KO", "Efectivo", "Préstamo"
+      "jugador", "INTC", "MSFT", "AAPL", "IPET", "IBM", "WMT", "MRK", "KO", "Efectivo"
+      // "Préstamo" eliminado
     ];
     const filas = Array.from({ length: 12 }).map((_, idx) => ({
       jugador: `Jugador ${idx + 1}`,
@@ -30,12 +31,12 @@ router.post('/init', async (req, res) => {
       WMT: null,
       MRK: null,
       KO: null,
-      Efectivo: null,
-      Préstamo: null
+      Efectivo: null
+      // Préstamo eliminado
     }));
     const tabla = new PortafolioJugadores({ encabezados, filas });
     await tabla.save();
-    await emitirPortafolioJugadores(); // <--- EMITE EL CAMBIO
+    await emitirPortafolioJugadores();
 
     res.json(tabla);
   } catch (err) {
@@ -43,7 +44,28 @@ router.post('/init', async (req, res) => {
   }
 });
 
-// Si agregas más endpoints que modifiquen la colección, usa await emitirPortafolioJugadores() después de cada modificación
+// POST /eliminar-prestamo - elimina la columna Préstamo de toda la colección
+router.post('/eliminar-prestamo', async (req, res) => {
+  try {
+    const doc = await PortafolioJugadores.findOne({});
+    if (!doc) return res.status(404).json({ error: "No se encontró colección PortafolioJugadores" });
+
+    // Eliminar "Préstamo" del encabezado
+    doc.encabezados = doc.encabezados.filter(e => e !== "Préstamo");
+
+    // Eliminar "Préstamo" de cada fila
+    doc.filas = doc.filas.map(fila => {
+      const { Préstamo, ...resto } = fila;
+      return resto;
+    });
+
+    await doc.save();
+    await emitirPortafolioJugadores();
+    res.json({ ok: true, doc });
+  } catch (err) {
+    res.status(500).json({ error: "Error al eliminar la columna Préstamo." });
+  }
+});
 
 module.exports = router;
 
