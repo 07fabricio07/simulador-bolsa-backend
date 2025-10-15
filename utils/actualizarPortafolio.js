@@ -2,7 +2,8 @@ const PortafolioJugadores = require("../models/PortafolioJugadores");
 const HistorialLimpio = require("../models/HistorialLimpio");
 const RegistrosRegistrador = require("../models/RegistrosRegistrador");
 
-// Recalcula el stock de una acción para un jugador
+const VALOR_INICIAL = 10000; // Valor inicial en cada celda
+
 async function actualizarStockJugadorAccion(jugador, accion) {
   // Suma total de compras en ambas colecciones
   const comprasHL = await HistorialLimpio.aggregate([
@@ -26,7 +27,8 @@ async function actualizarStockJugadorAccion(jugador, accion) {
   ]);
   const sumaVentas = (ventasHL[0]?.total || 0) + (ventasRR[0]?.total || 0);
 
-  const nuevoStock = sumaCompras - sumaVentas;
+  // Valor final: inicial + compras - ventas
+  const nuevoStock = VALOR_INICIAL + sumaCompras - sumaVentas;
 
   // Actualiza el stock en el PortafolioJugadores
   const portafolio = await PortafolioJugadores.findOne({});
