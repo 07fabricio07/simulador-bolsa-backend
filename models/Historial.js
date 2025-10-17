@@ -11,16 +11,25 @@ const HistorialSchema = new mongoose.Schema({
   hora: { type: Date, required: true },
   momento: { type: Number, required: true },
   efectivo: { type: Number, required: true },
-  estado: { type: String, required: true }
+  estado: { type: String, required: true } // "aprobada" o cualquier otro estado
 });
 
-HistorialSchema.post('save', async function(doc) {
-  if (doc.estado === 'aprobada') {
-    console.log('HOOK EJECUTADO: Actualizando stock para', doc.comprador, doc.vendedor, 'acción:', doc.accion);
-    await actualizarStockJugadorAccion(doc.comprador, doc.accion);
-    await actualizarStockJugadorAccion(doc.vendedor, doc.accion);
-  } else {
-    console.log('HOOK NO EJECUTADO (Estado no aprobado):', doc.estado);
+// Hook para procesar solo filas con estado "aprobada"
+HistorialSchema.post('save', async function() {
+  try {
+    console.log('Ejecutando hook para procesar filas aprobadas en Historial.');
+
+    // Filtrar todas las filas con estado "aprobada"
+    const filasAprobadas = await mongoose.model('Historial').find({ estado: 'aprobada' });
+
+    for (const fila of filasAprobadas) {
+      await actualizarStockJugadorAccion(fila.comprador, fila.accion);
+      await actualizarStockJugadorAccion(fila.vendedor, fila.accion);
+    }
+
+    console.log('Actualización de stock completada para todas las filas aprobadas.');
+  } catch (error) {
+    console.error('Error al procesar filas aprobadas de Historial:', error);
   }
 });
 

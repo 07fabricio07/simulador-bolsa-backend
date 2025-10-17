@@ -1,6 +1,6 @@
 require('dotenv').config();
 const mongoose = require('mongoose');
-const User = require('./models/User');
+const User = require('./models/User'); // Ruta corregida
 
 const usuarios = [
   { usuario: "jugador1", nombre: "Jugador 1", password: "pass1", rol: "jugador" },
