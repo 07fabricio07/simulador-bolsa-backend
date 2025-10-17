@@ -1,7 +1,7 @@
 require('dotenv').config();
 const mongoose = require('mongoose');
-const PortafolioInicial = require('../models/PortafolioInicial');
 const PortafolioJugadores = require('../models/PortafolioJugadores');
+const Historial = require('../models/Historial');
 
 const MONGODB_URI = process.env.MONGODB_URI;
 
@@ -13,39 +13,34 @@ mongoose.connect(MONGODB_URI, {
 
   async function actualizar() {
     try {
-      const portafolioInicial = await PortafolioInicial.findOne({});
-      if (!portafolioInicial) {
-        console.log('No existe PortafolioInicial');
+      const portafolio = await PortafolioJugadores.findOne({});
+      if (!portafolio) {
+        console.log('No existe PortafolioJugadores');
         return;
       }
 
-      // Construye encabezados agregando "Prestamo" al final
-      const encabezados = [...portafolioInicial.encabezados, "Prestamo"];
+      // Procesa las transacciones aprobadas en Historial
+      const transacciones = await Historial.find({ estado: 'aprobada' });
 
-      // Construye las filas sumando 10 a cada valor numérico y agregando "Prestamo": 0
-      const filas = portafolioInicial.filas.map(fila => {
-        const nuevaFila = {};
-        for (const enc of portafolioInicial.encabezados) {
-          if (enc === "jugador") {
-            nuevaFila[enc] = fila[enc];
-          } else {
-            nuevaFila[enc] = Number(fila[enc]) + 10;
-          }
+      for (const transaccion of transacciones) {
+        const fila = portafolio.filas.find(f => f.jugador === transaccion.comprador);
+        if (fila) {
+          fila[transaccion.accion] = (fila[transaccion.accion] || 10000) + transaccion.cantidad; // Actualiza compras
         }
-        nuevaFila["Prestamo"] = 0;
-        return nuevaFila;
-      });
 
-      // Actualiza la colección PortafolioJugadores
-      await PortafolioJugadores.deleteMany({});
-      await PortafolioJugadores.create({ encabezados, filas });
+        const filaVendedor = portafolio.filas.find(f => f.jugador === transaccion.vendedor);
+        if (filaVendedor) {
+          filaVendedor[transaccion.accion] = (filaVendedor[transaccion.accion] || 10000) - transaccion.cantidad; // Actualiza ventas
+        }
+      }
 
-      console.log('PortafolioJugadores actualizado:', new Date().toLocaleString());
+      await portafolio.save();
+      console.log('PortafolioJugadores actualizado dinámicamente:', new Date().toLocaleString());
     } catch (err) {
       console.error('Error en la actualización:', err);
     }
   }
 
-  // Ejecuta cada segundo
-  setInterval(actualizar, 1000);
+  // Ejecuta cada 5 minutos
+  setInterval(actualizar, 300000); // 5 minutos
 });
