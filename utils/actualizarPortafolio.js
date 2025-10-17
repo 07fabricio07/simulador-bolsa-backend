@@ -1,38 +1,25 @@
 const PortafolioJugadores = require("../models/PortafolioJugadores");
-const Historial = require("../models/Historial");
 
 const VALOR_INICIAL = 10000; // Valor inicial en cada celda
 
-async function actualizarStockJugadorAccion(jugador, accion) {
+async function actualizarStockJugadorAccion(jugador, accion, transacciones) {
   try {
     console.log(`Iniciando cálculo de stock dinámico: Jugador=${jugador}, Acción=${accion}`);
 
     // Calcula la suma total de compras y ventas
-    const compras = await Historial.aggregate([
-      { $match: { comprador: jugador, accion, estado: 'aprobada' } },
-      { $group: { _id: null, total: { $sum: "$cantidad" } } }
-    ]);
-    const ventas = await Historial.aggregate([
-      { $match: { vendedor: jugador, accion, estado: 'aprobada' } },
-      { $group: { _id: null, total: { $sum: "$cantidad" } } }
-    ]);
+    const compras = transacciones.filter(t => t.comprador === jugador && t.accion === accion).reduce((sum, t) => sum + t.cantidad, 0);
+    const ventas = transacciones.filter(t => t.vendedor === jugador && t.accion === accion).reduce((sum, t) => sum + t.cantidad, 0);
 
-    const totalCompras = compras[0]?.total || 0;
-    const totalVentas = ventas[0]?.total || 0;
+    const nuevoStock = VALOR_INICIAL + compras - ventas;
 
-    // Calcula el stock final
-    const nuevoStock = VALOR_INICIAL + totalCompras - totalVentas;
+    console.log(`Cálculo completado: Compras=${compras}, Ventas=${ventas}, NuevoStock=${nuevoStock}`);
 
-    console.log(`Cálculo completado: Compras=${totalCompras}, Ventas=${totalVentas}, NuevoStock=${nuevoStock}`);
-
-    // Actualiza el stock en el PortafolioJugadores
     const portafolio = await PortafolioJugadores.findOne({});
     if (!portafolio) {
       console.error('PortafolioJugadores no encontrado. Verifica que la colección exista.');
       return;
     }
 
-    // Busca la fila del jugador
     const fila = portafolio.filas.find(f => f.jugador === jugador);
     if (!fila) {
       console.error(`Jugador no encontrado en PortafolioJugadores: ${jugador}`);
