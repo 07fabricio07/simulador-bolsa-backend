@@ -74,8 +74,17 @@ router.put('/:id', async (req, res) => {
     if (!result) {
       return res.status(404).json({ error: "Intención no encontrada." });
     }
+
+    // Emitir a clientes que las intenciones cambiaron
+    try {
+      await emitirIntencionesDeVenta();
+    } catch (e) {
+      console.error("Error emitiendo intenciones tras PUT:", e);
+    }
+
     res.json({ ok: true, fila: result });
   } catch (err) {
+    console.error("Error en PUT /intenciones-de-venta/:id", err);
     res.status(500).json({ error: "Error al actualizar intención." });
   }
 });
