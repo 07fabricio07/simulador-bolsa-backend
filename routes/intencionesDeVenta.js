@@ -3,8 +3,8 @@ const router = express.Router();
 const IntencionesDeVenta = require('../models/IntencionesDeVenta');
 // Import emitters finos
 const { emitirIntencionCreate, emitirIntencionUpdate, emitirIntencionDelete } = require('../server');
-// Servicio regulador
-const { aplicarDelta } = require('../services/reguladorAcciones');
+// Nota: la actualización del Regulador ahora la realiza automáticamente el hook del modelo,
+// por lo que NO es necesario llamar aplicarDelta desde las rutas. Esto evita duplicados.
 
 // GET - Devuelve todas las intenciones de venta
 router.get('/', async (req, res) => {
@@ -43,14 +43,8 @@ router.post('/', async (req, res) => {
 
     await nuevaFila.save();
 
+    // Emitir creación (el hook en el modelo actualizará ReguladorAcciones)
     try { await emitirIntencionCreate(nuevaFila); } catch (e) { console.error("Error emitiendo intencion:create:", e); }
-
-    // Actualizar regulador incrementalmente (sumar cantidad)
-    try {
-      await aplicarDelta({ jugador: nuevaFila.jugador, accion: nuevaFila.accion, delta: nuevaFila.cantidad });
-    } catch (e) {
-      console.error("Error aplicando delta regulador (POST intencion):", e);
-    }
 
     res.json({ ok: true, fila: nuevaFila });
   } catch (err) {
@@ -68,30 +62,22 @@ router.put('/:id', async (req, res) => {
       return res.status(400).json({ error: "Cantidad debe ser un número" });
     }
 
-    // Leer anterior valor (para calcular delta)
+    // Leer anterior valor (para validar existencia)
     const viejo = await IntencionesDeVenta.findOne({ id });
     if (!viejo) return res.status(404).json({ error: "Intención no encontrada." });
 
+    // Usamos findOneAndUpdate para activar los hooks pre/post en el modelo
     const result = await IntencionesDeVenta.findOneAndUpdate(
       { id },
       { cantidad },
-      { new: true }
+      { new: true, runValidators: true }
     );
     if (!result) {
       return res.status(404).json({ error: "Intención no encontrada." });
     }
 
+    // Emitir evento de actualización (el hook actualizará regulador automáticamente)
     try { await emitirIntencionUpdate(result); } catch (e) { console.error("Error emitiendo intencion:update:", e); }
-
-    // Aplicar delta al regulador: nuevo - viejo
-    try {
-      const delta = (result.cantidad || 0) - (viejo.cantidad || 0);
-      if (delta !== 0) {
-        await aplicarDelta({ jugador: result.jugador, accion: result.accion, delta });
-      }
-    } catch (e) {
-      console.error("Error aplicando delta regulador (PUT intencion):", e);
-    }
 
     res.json({ ok: true, fila: result });
   } catch (err) {
