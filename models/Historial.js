@@ -1,5 +1,5 @@
 const mongoose = require('mongoose');
-const { actualizarStockJugadorAccion } = require('../utils/actualizarPortafolio');
+const { actualizarStockJugadorAccion, actualizarEfectivoJugador } = require('../utils/actualizarPortafolio');
 
 const HistorialSchema = new mongoose.Schema({
   id: { type: Number, required: true },
@@ -22,10 +22,15 @@ HistorialSchema.post('save', async function(doc) {
       // Obtén todas las transacciones aprobadas
       const transacciones = await mongoose.model('Historial').find({ estado: 'aprobada' });
 
+      // Actualiza acciones
       await actualizarStockJugadorAccion(doc.comprador, doc.accion, transacciones);
       await actualizarStockJugadorAccion(doc.vendedor, doc.accion, transacciones);
 
-      console.log('Actualización de stock completada para la fila procesada.');
+      // Actualiza efectivo
+      await actualizarEfectivoJugador(doc.comprador, -doc.cantidad * doc.precio); // Restar efectivo al comprador
+      await actualizarEfectivoJugador(doc.vendedor, doc.cantidad * doc.precio);  // Sumar efectivo al vendedor
+
+      console.log('Actualización completada para acciones y efectivo.');
     } else {
       console.log(`Fila ignorada, estado no aprobado: Estado=${doc.estado}`);
     }
