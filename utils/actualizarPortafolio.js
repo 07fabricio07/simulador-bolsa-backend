@@ -10,22 +10,22 @@ async function actualizarStockJugadorAccion(jugador, accion) {
 
     // Suma total de compras en ambas colecciones
     const comprasHL = await HistorialLimpio.aggregate([
-      { $match: { comprador: jugador, accion } },
+      { $match: { comprador: { $regex: `^${jugador}$`, $options: "i" }, accion: { $regex: `^${accion}$`, $options: "i" } } },
       { $group: { _id: null, total: { $sum: "$cantidad" } } }
     ]);
     const comprasRR = await RegistrosRegistrador.aggregate([
-      { $match: { comprador: jugador, accion } },
+      { $match: { comprador: { $regex: `^${jugador}$`, $options: "i" }, accion: { $regex: `^${accion}$`, $options: "i" } } },
       { $group: { _id: null, total: { $sum: "$cantidad" } } }
     ]);
     const sumaCompras = (comprasHL[0]?.total || 0) + (comprasRR[0]?.total || 0);
 
     // Suma total de ventas en ambas colecciones
     const ventasHL = await HistorialLimpio.aggregate([
-      { $match: { vendedor: jugador, accion } },
+      { $match: { vendedor: { $regex: `^${jugador}$`, $options: "i" }, accion: { $regex: `^${accion}$`, $options: "i" } } },
       { $group: { _id: null, total: { $sum: "$cantidad" } } }
     ]);
     const ventasRR = await RegistrosRegistrador.aggregate([
-      { $match: { vendedor: jugador, accion } },
+      { $match: { vendedor: { $regex: `^${jugador}$`, $options: "i" }, accion: { $regex: `^${accion}$`, $options: "i" } } },
       { $group: { _id: null, total: { $sum: "$cantidad" } } }
     ]);
     const sumaVentas = (ventasHL[0]?.total || 0) + (ventasRR[0]?.total || 0);
