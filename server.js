@@ -38,39 +38,30 @@ const ReguladorAcciones = require('./models/ReguladorAcciones'); // <<< NUEVO MO
 const server = http.createServer(app);
 const io = socketIo(server, { cors: { origin: "*" } });
 
-// Helper: normaliza payloads que pueden ser { filas: [...] } o array directo
-function normalizePayload(datos) {
-  if (!datos) return [];
-  if (Array.isArray(datos)) return datos;
-  if (datos.filas && Array.isArray(datos.filas)) return datos.filas;
-  return datos;
+// Emitir colecciones relevantes (snapshots)
+io.on('connection', async (socket) => {
+  console.log('Cliente conectado (WebSocket)');
+  // En conexión inicial enviamos snapshots para sincronizar estado
+  socket.emit('portafolio_jugadores', await PortafolioJugadores.findOne({}));
+  socket.emit('portafolio_inicial', await PortafolioInicial.findOne({}));
+  socket.emit('tabla_momentos', await TablaMomentos.findOne({}));
+  socket.emit('precios_historicos', await PreciosHistoricos.findOne({}));
+  socket.emit('parametros_simulacion', await ParametrosSimulacion.findOne({}));
+  socket.emit('acciones_para_desplegable', await AccionesParaDesplegable.findOne({}));
+  socket.emit('precios_filtrados', await PreciosFiltrados.findOne({}));
+  socket.emit('intenciones_de_venta', await IntencionesDeVenta.find({}).sort({ id: 1 }));
+  socket.emit('historial', await Historial.find({}).sort({ hora: -1 }));
+  socket.emit('historial_limpio', await HistorialLimpio.find({}).sort({ hora: -1 }));
+  socket.emit('registros_registrador', await RegistrosRegistrador.find({}).sort({ hora: -1 }));
+  socket.emit('regulador_acciones', await ReguladorAcciones.findOne({})); // <<< NUEVO SOCKET
+});
+
+// Emitir colección genérica (snapshot)
+async function emitirColeccion(nombreEvento, datos) {
+  io.emit(nombreEvento, datos);
 }
 
-// Helper: detecta arrays compuestos solo de objetos vacíos (filler rows)
-function isAllEmptyObjects(arr) {
-  if (!Array.isArray(arr)) return false;
-  return arr.length > 0 && arr.every(item => {
-    if (!item || typeof item !== "object") return false;
-    return Object.keys(item).length === 0;
-  });
-}
-
-// Emitir colecciones de forma segura: por defecto NO emite arrays vacíos (a menos que forceEmit = true)
-async function emitirColeccion(nombreEvento, datos, { forceEmit = false } = {}) {
-  const payload = normalizePayload(datos);
-  if (!forceEmit && Array.isArray(payload) && payload.length === 0) {
-    console.log(`emitirColeccion: OMITIDO emitir '${nombreEvento}' (array vacío)`);
-    return;
-  }
-  if (!forceEmit && isAllEmptyObjects(payload)) {
-    console.log(`emitirColeccion: OMITIDO emitir '${nombreEvento}' (solo objetos vacíos)`);
-    return;
-  }
-  io.emit(nombreEvento, payload);
-  console.log(`emitirColeccion: emitido '${nombreEvento}' (items=${Array.isArray(payload) ? payload.length : 'obj'})`);
-}
-
-// Exportar funciones de emisión (se mantienen igual para llamadas desde rutas)
+// Exportar funciones de emisión (snapshots)
 module.exports.emitirPortafolioJugadores = async () => emitirColeccion('portafolio_jugadores', await PortafolioJugadores.findOne({}));
 module.exports.emitirPortafolioInicial = async () => emitirColeccion('portafolio_inicial', await PortafolioInicial.findOne({}));
 module.exports.emitirTablaMomentos = async () => emitirColeccion('tabla_momentos', await TablaMomentos.findOne({}));
@@ -84,51 +75,31 @@ module.exports.emitirHistorialLimpio = async () => emitirColeccion('historial_li
 module.exports.emitirRegistrosRegistrador = async () => emitirColeccion('registros_registrador', await RegistrosRegistrador.find({}).sort({ hora: -1 }));
 module.exports.emitirReguladorAcciones = async () => emitirColeccion('regulador_acciones', await ReguladorAcciones.findOne({})); // <<< NUEVO EMISOR
 
-// Emitir colecciones relevantes al conectar un cliente, de forma segura (no enviar vacíos innecesarios)
-io.on('connection', async (socket) => {
-  console.log('Cliente conectado (WebSocket)');
+// --- Emisores incrementales (tipo) para reducir tráfico ---
+// Emitir una intención nueva
+module.exports.emitirIntencionCreate = async (fila) => {
+  // fila: documento guardado en BD (objeto)
+  io.emit('intencion:create', { fila });
+};
 
-  try {
-    const pj = normalizePayload(await PortafolioJugadores.findOne({}));
-    if (!(Array.isArray(pj) && pj.length === 0)) socket.emit('portafolio_jugadores', pj);
+// Emitir actualización puntual de una intención (por ejemplo cantidad actualizada)
+module.exports.emitirIntencionUpdate = async (fila) => {
+  // fila puede ser el documento completo o un objeto parcial con id y campos actualizados
+  io.emit('intencion:update', { fila });
+};
 
-    const pi = normalizePayload(await PortafolioInicial.findOne({}));
-    if (!(Array.isArray(pi) && pi.length === 0)) socket.emit('portafolio_inicial', pi);
+// Emitir borrado de intención
+module.exports.emitirIntencionDelete = async (id) => {
+  io.emit('intencion:delete', { id });
+};
 
-    const tm = normalizePayload(await TablaMomentos.findOne({}));
-    if (!(Array.isArray(tm) && tm.length === 0)) socket.emit('tabla_momentos', tm);
+// Emitir creación puntual de historial limpio (nueva compra)
+module.exports.emitirHistorialCreate = async (fila) => {
+  io.emit('historial:create', { fila });
+};
 
-    const ph = normalizePayload(await PreciosHistoricos.findOne({}));
-    if (!(Array.isArray(ph) && ph.length === 0)) socket.emit('precios_historicos', ph);
-
-    const ps = normalizePayload(await ParametrosSimulacion.findOne({}));
-    if (!(Array.isArray(ps) && ps.length === 0)) socket.emit('parametros_simulacion', ps);
-
-    const ad = normalizePayload(await AccionesParaDesplegable.findOne({}));
-    if (!(Array.isArray(ad) && ad.length === 0)) socket.emit('acciones_para_desplegable', ad);
-
-    const pf = normalizePayload(await PreciosFiltrados.findOne({}));
-    if (!(Array.isArray(pf) && pf.length === 0)) socket.emit('precios_filtrados', pf);
-
-    const idv = normalizePayload(await IntencionesDeVenta.find({}).sort({ id: 1 }));
-    if (!(Array.isArray(idv) && idv.length === 0)) socket.emit('intenciones_de_venta', idv);
-
-    const h = normalizePayload(await Historial.find({}).sort({ hora: -1 }));
-    if (!(Array.isArray(h) && h.length === 0)) socket.emit('historial', h);
-
-    const hl = normalizePayload(await HistorialLimpio.find({}).sort({ hora: -1 }));
-    if (!(Array.isArray(hl) && hl.length === 0)) socket.emit('historial_limpio', hl);
-
-    const rr = normalizePayload(await RegistrosRegistrador.find({}).sort({ hora: -1 }));
-    if (!(Array.isArray(rr) && rr.length === 0)) socket.emit('registros_registrador', rr);
-
-    const ra = normalizePayload(await ReguladorAcciones.findOne({}));
-    if (!(Array.isArray(ra) && ra.length === 0)) socket.emit('regulador_acciones', ra);
-
-  } catch (err) {
-    console.error("Error emitiendo datos al conectar:", err);
-  }
-});
+// También expongo io por si necesitas emitir directamente desde rutas
+module.exports.io = io;
 
 // ----- LÓGICA DE FILTRADO Y ACTUALIZACIÓN -----
 async function actualizarPreciosFiltradosDesdeMomentos() {
@@ -146,22 +117,21 @@ async function actualizarPreciosFiltradosDesdeMomentos() {
   }
   const totalFilas = 230 + momentoActual;
   const filasFiltradas = precios.filas.slice(0, totalFilas);
-
-  // Reescribe la colección local
   await PreciosFiltrados.deleteMany({});
   await PreciosFiltrados.create({
     encabezados: precios.encabezados,
     filas: filasFiltradas
   });
-
-  // Emite la colección de forma segura (no emitirá array vacío)
-  await emitirColeccion('precios_filtrados', { encabezados: precios.encabezados, filas: filasFiltradas });
-
+  io.emit('precios_filtrados', {
+    encabezados: precios.encabezados,
+    filas: filasFiltradas
+  });
   console.log(`PreciosFiltrados actualizado: encabezados=${precios.encabezados.length}, filas=${filasFiltradas.length}`);
 }
 module.exports.actualizarPreciosFiltradosDesdeMomentos = actualizarPreciosFiltradosDesdeMomentos;
 
 // ----- RUTAS -----
+// (mantengo tus requires tal cual)
 const authRouter = require('./routes/auth');
 app.use('/api/auth', authRouter);
 

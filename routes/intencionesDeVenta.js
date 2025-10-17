@@ -1,7 +1,8 @@
 const express = require('express');
 const router = express.Router();
 const IntencionesDeVenta = require('../models/IntencionesDeVenta');
-const { emitirIntencionesDeVenta } = require('../server');
+// Import emitters finos
+const { emitirIntencionCreate, emitirIntencionUpdate, emitirIntencionDelete } = require('../server');
 
 // GET - Devuelve todas las intenciones de venta
 router.get('/', async (req, res) => {
@@ -12,19 +13,15 @@ router.get('/', async (req, res) => {
 // POST - Inserta una nueva intención de venta
 router.post('/', async (req, res) => {
   try {
-    // LOG para depuración
     console.log("Datos recibidos en POST:", req.body);
 
-    // Convierte los datos a los tipos esperados
     const accion = req.body.accion;
     const cantidad = Number(req.body.cantidad);
     const precio = Number(req.body.precio);
     const jugador = req.body.jugador;
 
-    // LOG de los datos convertidos
     console.log("Datos convertidos:", { accion, cantidad, precio, jugador });
 
-    // Validaciones robustas
     if (
       !accion || !["INTC", "MSFT", "AAPL", "IPET", "IBM"].includes(accion) ||
       !Number.isInteger(cantidad) || cantidad <= 0 ||
@@ -49,7 +46,13 @@ router.post('/', async (req, res) => {
     });
 
     await nuevaFila.save();
-    await emitirIntencionesDeVenta(); // WebSocket
+
+    // Emitir evento incremental: creación de intención
+    try {
+      await emitirIntencionCreate(nuevaFila);
+    } catch (e) {
+      console.error("Error emitiendo intencion:create:", e);
+    }
 
     res.json({ ok: true, fila: nuevaFila });
   } catch (err) {
@@ -58,7 +61,7 @@ router.post('/', async (req, res) => {
   }
 });
 
-// PUT - Actualiza la cantidad de una intención de venta a 0 (anular)
+// PUT - Actualiza la cantidad de una intención de venta (anular o reducción)
 router.put('/:id', async (req, res) => {
   try {
     const id = Number(req.params.id);
@@ -75,11 +78,11 @@ router.put('/:id', async (req, res) => {
       return res.status(404).json({ error: "Intención no encontrada." });
     }
 
-    // Emitir a clientes que las intenciones cambiaron
+    // Emitir evento incremental: actualización de intención
     try {
-      await emitirIntencionesDeVenta();
+      await emitirIntencionUpdate(result);
     } catch (e) {
-      console.error("Error emitiendo intenciones tras PUT:", e);
+      console.error("Error emitiendo intencion:update:", e);
     }
 
     res.json({ ok: true, fila: result });

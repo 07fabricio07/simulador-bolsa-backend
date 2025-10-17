@@ -2,8 +2,8 @@ const express = require('express');
 const router = express.Router();
 const Historial = require('../models/Historial');
 const IntencionesDeVenta = require('../models/IntencionesDeVenta');
-// Importar emisores adicionales para notificar cambios también en las intenciones/historial_limpio
-const { emitirHistorial, emitirIntencionesDeVenta, emitirHistorialLimpio } = require('../server');
+// Import emitters necesarios
+const { emitirHistorial, emitirIntencionUpdate, emitirIntencionesDeVenta, emitirHistorialCreate, emitirHistorialLimpio } = require('../server');
 
 // GET - Devuelve el historial completo
 router.get('/', async (req, res) => {
@@ -41,20 +41,19 @@ router.post('/', async (req, res) => {
         const intencion = await IntencionesDeVenta.findOne({ id });
         if (intencion) {
           intencion.cantidad = Math.max(0, intencion.cantidad - cantidad);
-          await intencion.save();
-          // Emitir actualización de intenciones para que clientes vean la nueva cantidad
+          const saved = await intencion.save();
+
+          // Emitir actualización incremental de la intención (nuevo valor de cantidad)
           try {
-            await emitirIntencionesDeVenta();
+            await emitirIntencionUpdate({ id: saved.id, cantidad: saved.cantidad });
           } catch (emitErr) {
-            console.error("Error emitiendo intenciones tras actualizar cantidad:", emitErr);
+            console.error("Error emitiendo intencion:update:", emitErr);
           }
         } else {
-          // Si no existe la intención, loguear para depuración
           console.warn(`No se encontró IntencionesDeVenta con id=${id} al procesar historial POST.`);
         }
       } catch (updateErr) {
         console.error("Error actualizando IntencionesDeVenta tras compra aprobada:", updateErr);
-        // No abortamos el proceso de guardar historial; seguimos intentando guardar la compra
       }
     }
 
@@ -65,30 +64,34 @@ router.post('/', async (req, res) => {
 
     await nuevaCompra.save();
 
-    // Emitir actualizaciones por WebSocket:
-    // - Notificar intenciones (si no se emitió antes)
-    // - Notificar historial (para que clientes actualicen vista de historial)
-    // - Notificar historial_limpio si existe ese emisor
+    // Emitir evento incremental sobre historial (creación)
     try {
-      // emitirIntencionesDeVenta puede haberse llamado ya si hubo una resta de cantidad,
-      // pero llamarlo de nuevo es seguro (envía el snapshot actualizado).
-      await emitirIntencionesDeVenta();
+      await emitirHistorialCreate(nuevaCompra);
     } catch (e) {
-      console.error("Error emitiendo intenciones tras POST historial:", e);
+      console.error("Error emitiendo historial:create:", e);
     }
 
+    // Opcional: emitir snapshots para compatibilidad (no requerido)
     try {
       await emitirHistorial();
     } catch (e) {
-      console.error("Error emitiendo historial tras POST historial:", e);
+      console.error("Error emitiendo historial snapshot tras POST historial:", e);
     }
 
+    // Opcional: emitir historial_limpio snapshot
     try {
       if (typeof emitirHistorialLimpio === "function") {
         await emitirHistorialLimpio();
       }
     } catch (e) {
       console.error("Error emitiendo historial_limpio tras POST historial:", e);
+    }
+
+    // Opcional: emitir intenciones snapshot (para clientes antiguos que lo esperen)
+    try {
+      await emitirIntencionesDeVenta();
+    } catch (e) {
+      console.error("Error emitiendo intenciones snapshot tras POST historial:", e);
     }
 
     res.json({ ok: true, fila: nuevaCompra });
