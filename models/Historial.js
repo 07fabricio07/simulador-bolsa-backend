@@ -14,11 +14,13 @@ const HistorialSchema = new mongoose.Schema({
   estado: { type: String, required: true }
 });
 
-// Hook para actualizar el stock SOLO si la transacción es aprobada
 HistorialSchema.post('save', async function(doc) {
   if (doc.estado === 'aprobada') {
+    console.log('HOOK EJECUTADO: Actualizando stock para', doc.comprador, doc.vendedor, 'acción:', doc.accion);
     await actualizarStockJugadorAccion(doc.comprador, doc.accion);
     await actualizarStockJugadorAccion(doc.vendedor, doc.accion);
+  } else {
+    console.log('HOOK NO EJECUTADO (Estado no aprobado):', doc.estado);
   }
 });
 
