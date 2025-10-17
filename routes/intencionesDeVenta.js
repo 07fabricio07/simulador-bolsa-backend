@@ -3,6 +3,8 @@ const router = express.Router();
 const IntencionesDeVenta = require('../models/IntencionesDeVenta');
 // Import emitters finos
 const { emitirIntencionCreate, emitirIntencionUpdate, emitirIntencionDelete } = require('../server');
+// Servicio regulador
+const { aplicarDelta } = require('../services/reguladorAcciones');
 
 // GET - Devuelve todas las intenciones de venta
 router.get('/', async (req, res) => {
@@ -13,14 +15,10 @@ router.get('/', async (req, res) => {
 // POST - Inserta una nueva intención de venta
 router.post('/', async (req, res) => {
   try {
-    console.log("Datos recibidos en POST:", req.body);
-
     const accion = req.body.accion;
     const cantidad = Number(req.body.cantidad);
     const precio = Number(req.body.precio);
     const jugador = req.body.jugador;
-
-    console.log("Datos convertidos:", { accion, cantidad, precio, jugador });
 
     if (
       !accion || !["INTC", "MSFT", "AAPL", "IPET", "IBM"].includes(accion) ||
@@ -28,11 +26,9 @@ router.post('/', async (req, res) => {
       isNaN(precio) || precio <= 0 ||
       !jugador || !/^Jugador \d+$/.test(jugador)
     ) {
-      console.log("Validación fallida:", { accion, cantidad, precio, jugador });
       return res.status(400).json({ error: 'Datos inválidos.' });
     }
 
-    // Autoincrementa el ID
     const ultimo = await IntencionesDeVenta.findOne({}).sort({ id: -1 });
     const nuevoId = ultimo ? ultimo.id + 1 : 1;
 
@@ -47,11 +43,13 @@ router.post('/', async (req, res) => {
 
     await nuevaFila.save();
 
-    // Emitir evento incremental: creación de intención
+    try { await emitirIntencionCreate(nuevaFila); } catch (e) { console.error("Error emitiendo intencion:create:", e); }
+
+    // Actualizar regulador incrementalmente (sumar cantidad)
     try {
-      await emitirIntencionCreate(nuevaFila);
+      await aplicarDelta({ jugador: nuevaFila.jugador, accion: nuevaFila.accion, delta: nuevaFila.cantidad });
     } catch (e) {
-      console.error("Error emitiendo intencion:create:", e);
+      console.error("Error aplicando delta regulador (POST intencion):", e);
     }
 
     res.json({ ok: true, fila: nuevaFila });
@@ -69,6 +67,11 @@ router.put('/:id', async (req, res) => {
     if (typeof cantidad !== "number") {
       return res.status(400).json({ error: "Cantidad debe ser un número" });
     }
+
+    // Leer anterior valor (para calcular delta)
+    const viejo = await IntencionesDeVenta.findOne({ id });
+    if (!viejo) return res.status(404).json({ error: "Intención no encontrada." });
+
     const result = await IntencionesDeVenta.findOneAndUpdate(
       { id },
       { cantidad },
@@ -78,11 +81,16 @@ router.put('/:id', async (req, res) => {
       return res.status(404).json({ error: "Intención no encontrada." });
     }
 
-    // Emitir evento incremental: actualización de intención
+    try { await emitirIntencionUpdate(result); } catch (e) { console.error("Error emitiendo intencion:update:", e); }
+
+    // Aplicar delta al regulador: nuevo - viejo
     try {
-      await emitirIntencionUpdate(result);
+      const delta = (result.cantidad || 0) - (viejo.cantidad || 0);
+      if (delta !== 0) {
+        await aplicarDelta({ jugador: result.jugador, accion: result.accion, delta });
+      }
     } catch (e) {
-      console.error("Error emitiendo intencion:update:", e);
+      console.error("Error aplicando delta regulador (PUT intencion):", e);
     }
 
     res.json({ ok: true, fila: result });
