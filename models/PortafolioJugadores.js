@@ -7,16 +7,16 @@ const PortafolioJugadoresSchema = new mongoose.Schema({
   filas: [
     {
       jugador: String,         // Ej: "Jugador 1"
-      INTC: { type: Number, default: null },
-      MSFT: { type: Number, default: null },
-      AAPL: { type: Number, default: null },
-      IPET: { type: Number, default: null },
-      IBM:  { type: Number, default: null },
-      WMT:  { type: Number, default: null },
-      MRK:  { type: Number, default: null },
-      KO:   { type: Number, default: null },
-      Efectivo: { type: Number, default: null },
-      Préstamo: { type: Number, default: null }
+      INTC: { type: Number, default: 10000 },
+      MSFT: { type: Number, default: 10000 },
+      AAPL: { type: Number, default: 10000 },
+      IPET: { type: Number, default: 10000 },
+      IBM:  { type: Number, default: 10000 },
+      WMT:  { type: Number, default: 10000 },
+      MRK:  { type: Number, default: 10000 },
+      KO:   { type: Number, default: 10000 },
+      Efectivo: { type: Number, default: 10000 },
+      Préstamo: { type: Number, default: 0 }
     }
   ]
 });
