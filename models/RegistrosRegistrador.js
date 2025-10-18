@@ -1,5 +1,4 @@
 const mongoose = require('mongoose');
-const { actualizarStockJugadorAccion } = require('../utils/actualizarPortafolio');
 
 const RegistrosRegistradorSchema = new mongoose.Schema({
   accion: { type: String, required: true, enum: ["MRK", "WMT", "KO"] },
@@ -10,9 +9,8 @@ const RegistrosRegistradorSchema = new mongoose.Schema({
   hora: { type: Date, required: true }
 });
 
-RegistrosRegistradorSchema.post('save', async function(doc) {
-  await actualizarStockJugadorAccion(doc.comprador, doc.accion);
-  await actualizarStockJugadorAccion(doc.vendedor, doc.accion);
-});
+// IMPORTANTE: removimos el hook post('save') que ejecutaba actualizarStockJugadorAccion.
+// Esa lógica debe ejecutarse únicamente al insertar en la colección Historial (donde ya se aplica),
+// para evitar duplicar las actualizaciones del portafolio.
 
 module.exports = mongoose.model('RegistrosRegistrador', RegistrosRegistradorSchema);
