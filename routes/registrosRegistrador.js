@@ -41,7 +41,9 @@ router.post('/', async (req, res) => {
       hora
     };
 
+    // IMPORTANT: proporcionamos id = 0 para indicar "no proviene de una IntenciónDeVenta"
     const historialPayload = {
+      id: 0,
       accion,
       cantidad,
       precio,
