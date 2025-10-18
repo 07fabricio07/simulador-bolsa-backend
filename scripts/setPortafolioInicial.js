@@ -42,8 +42,8 @@ async function main() {
     { jugador: "Jugador 11", INTC: 3023, MSFT: 3981, AAPL: 927,   IPET: 0, IBM: 2855, WMT: 2779, MRK: 1751, KO: 1354, Efectivo: 300000 },
     { jugador: "Jugador 12", INTC: 3023, MSFT: 3981, AAPL: 927,   IPET: 0, IBM: 2855, WMT: 2779, MRK: 1751, KO: 1354, Efectivo: 300000 },
     // Jugador 13 y 14 según tu imagen (valores grandes)
-    { jugador: "Jugador 13", INTC: 100000, MSFT: 100000, AAPL: 100000, IPET: 100000, IBM: 100000, WMT: 100000, MRK: 100000, KO: 100000, Efectivo: 1000000 },
-    { jugador: "Jugador 14", INTC: 100000, MSFT: 100000, AAPL: 100000, IPET: 100000, IBM: 100000, WMT: 100000, MRK: 100000, KO: 100000, Efectivo: 1000000 }
+    { jugador: "Jugador 13", INTC: 10000000, MSFT: 10000000, AAPL: 10000000, IPET: 10000000, IBM: 10000000, WMT: 10000000, MRK: 10000000, KO: 10000000, Efectivo: 100000000 },
+    { jugador: "Jugador 14", INTC: 10000000, MSFT: 10000000, AAPL: 10000000, IPET: 10000000, IBM: 10000000, WMT: 10000000, MRK: 10000000, KO: 10000000, Efectivo: 100000000 }
   ];
 
   // Upsert el documento PortafolioInicial
