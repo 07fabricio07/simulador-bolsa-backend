@@ -5,6 +5,61 @@ const mongoose = require('mongoose');
 const RegistrosRegistrador = require('../models/RegistrosRegistrador');
 const Historial = require('../models/Historial'); // se insertará la misma fila en Historial
 
+// Reutilizamos utilidades existentes para aplicar deltas y emitir snapshot
+const { aplicarDeltaAccion, aplicarDeltaEfectivo } = require('../utils/actualizarPortafolio');
+
+async function aplicarDeltasDesdeHistorialDoc(histDoc) {
+  // Solo aplicamos deltas cuando el estado es "aprobada"
+  if (!histDoc || String(histDoc.estado) !== 'aprobada') return;
+  try {
+    const accion = histDoc.accion;
+    const cantidad = Number(histDoc.cantidad) || 0;
+    const efectivo = Number(histDoc.efectivo) || (cantidad * Number(histDoc.precio || 0));
+
+    // Vendedor: -cantidad en la acción, +efectivo
+    const deltaVendedorAccion = -cantidad;
+    const deltaVendedorEfectivo = efectivo;
+
+    // Comprador: +cantidad en la acción, -efectivo
+    const deltaCompradorAccion = cantidad;
+    const deltaCompradorEfectivo = -efectivo;
+
+    // Aplicar deltas (se hacen y se loguean errores individualmente)
+    try {
+      await aplicarDeltaAccion(histDoc.vendedor, accion, deltaVendedorAccion);
+      await aplicarDeltaEfectivo(histDoc.vendedor, deltaVendedorEfectivo);
+      console.log(`Delta aplicado vendedor: ${histDoc.vendedor} ${accion} ${deltaVendedorAccion}, Efectivo ${deltaVendedorEfectivo}`);
+    } catch (err) {
+      console.error('Error aplicando delta vendedor desde registrosRegistrador:', err);
+    }
+
+    try {
+      await aplicarDeltaAccion(histDoc.comprador, accion, deltaCompradorAccion);
+      await aplicarDeltaEfectivo(histDoc.comprador, deltaCompradorEfectivo);
+      console.log(`Delta aplicado comprador: ${histDoc.comprador} ${accion} +${deltaCompradorAccion}, Efectivo ${deltaCompradorEfectivo}`);
+    } catch (err) {
+      console.error('Error aplicando delta comprador desde registrosRegistrador:', err);
+    }
+
+    // Emitir snapshot de PortafolioJugadores (si existe la función)
+    try {
+      const server = require('../server');
+      if (server && typeof server.emitirPortafolioJugadores === 'function') {
+        await server.emitirPortafolioJugadores();
+      } else if (server && server.io && typeof server.io.emit === 'function') {
+        // Fallback: emitir snapshot leiendo el modelo (server.emitirPortafolioJugadores preferible)
+        const PortafolioJugadoresModel = require('../models/PortafolioJugadores');
+        const snapshot = await PortafolioJugadoresModel.findOne({}).lean();
+        server.io.emit('portafolio_jugadores', snapshot);
+      }
+    } catch (err) {
+      console.warn('No se pudo emitir snapshot de PortafolioJugadores tras insertar historial desde registrador:', err && err.message);
+    }
+  } catch (err) {
+    console.error('Error en aplicarDeltasDesdeHistorialDoc:', err);
+  }
+}
+
 /**
  * POST /api/registros-registrador
  *
@@ -47,7 +102,7 @@ router.post('/', async (req, res) => {
       accion,
       cantidad,
       precio,
-      vendedor,   // en Historial el campo suele nombrarse así
+      vendedor,
       comprador,
       hora,
       momento,
@@ -67,24 +122,21 @@ router.post('/', async (req, res) => {
       await session.commitTransaction();
       session.endSession();
 
-      // Emitir eventos / forzar recalculo si el server exporta esas utilidades
+      // Emitir evento incremental sobre historial
       try {
-        const server = require('../server'); // puede no existir o no exportar funciones; manejamos con try/catch
-        // Si el server exporta io y un método para emitir snapshots, usarlo
+        const server = require('../server');
         if (server && server.io && typeof server.io.emit === 'function') {
           server.io.emit('historial:create', { fila: histDoc });
         }
-        // Llamadas auxiliares si existen
-        if (server && typeof server.emitirPortafolioJugadores === 'function') {
-          try { await server.emitirPortafolioJugadores(); } catch (e) { /* no bloquear */ }
-        }
         if (server && typeof server.emitirHistorialLimpio === 'function') {
-          try { await server.emitirHistorialLimpio(); } catch (e) { /* no bloquear */ }
+          try { await server.emitirHistorialLimpio(); } catch (e) {}
         }
       } catch (e) {
-        // No bloquear si no se puede emitir; sólo informar para debug
-        console.warn('No se pudo emitir snapshot/recalculo automáticamente después de registrar (no crítico):', e.message || e);
+        console.warn('No se pudo emitir historial:create tras transacción registrosRegistrador:', e && e.message);
       }
+
+      // Aplicar deltas al portafolio (si corresponde)
+      await aplicarDeltasDesdeHistorialDoc(histDoc);
 
       return res.status(201).json({ ok: true, registro: registroDoc, historial: histDoc });
     } catch (txErr) {
@@ -110,21 +162,21 @@ router.post('/', async (req, res) => {
     try {
       histDocFallback = await Historial.create(historialPayload);
 
-      // Emitir eventos / recalculo (igual que arriba)
+      // Emitir evento incremental sobre historial
       try {
         const server = require('../server');
         if (server && server.io && typeof server.io.emit === 'function') {
           server.io.emit('historial:create', { fila: histDocFallback });
         }
-        if (server && typeof server.emitirPortafolioJugadores === 'function') {
-          try { await server.emitirPortafolioJugadores(); } catch (e) {}
-        }
         if (server && typeof server.emitirHistorialLimpio === 'function') {
           try { await server.emitirHistorialLimpio(); } catch (e) {}
         }
       } catch (e) {
-        console.warn('No se pudo emitir snapshot/recalculo automáticamente (fallback):', e.message || e);
+        console.warn('No se pudo emitir historial:create (fallback):', e && e.message);
       }
+
+      // Aplicar deltas al portafolio (si corresponde)
+      await aplicarDeltasDesdeHistorialDoc(histDocFallback);
 
       return res.status(201).json({ ok: true, registro: registroDocFallback, historial: histDocFallback });
     } catch (err) {
